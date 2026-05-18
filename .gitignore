@@ -1,0 +1,11 @@
+.env
+*.env
+__pycache__/
+*.pyc
+venv/
+.venv/
+backend/chroma_db/
+.DS_Store
+.cursor/
+.vscode/
+*.log

@@ -1,0 +1,1269 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NutriBot 🥗 — AI Nutrition Coach</title>
+  <style>
+    /* ── Design tokens ───────────────────────────────────────────────────────── */
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --surface2: #22263a;
+      --border: #2d3148;
+      --accent: #4ade80;
+      --accent-dim: #16a34a;
+      --accent2: #818cf8;
+      --text: #e2e8f0;
+      --text-muted: #94a3b8;
+      --danger: #f87171;
+      --warning: #fbbf24;
+      --user-bubble: #1e3a5f;
+      --ai-bubble: #1a2535;
+      --radius: 12px;
+      --radius-sm: 8px;
+      --font: 'Inter', system-ui, sans-serif;
+      --sidebar-w: 300px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      height: 100dvh;
+      display: flex;
+      overflow: hidden;
+    }
+
+    /* ── Sidebar ─────────────────────────────────────────────────────────────── */
+    #sidebar {
+      width: var(--sidebar-w);
+      min-width: var(--sidebar-w);
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+      padding: 20px 16px;
+      gap: 20px;
+      transition: transform 0.25s ease;
+    }
+
+    .sidebar-logo {
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: var(--accent);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .sidebar-section {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .sidebar-label {
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+    }
+
+    .input-group {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .input-group label {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    input[type="email"],
+    input[type="password"],
+    input[type="number"],
+    select {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text);
+      padding: 8px 10px;
+      font-size: 0.85rem;
+      width: 100%;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    input:focus,
+    select:focus {
+      border-color: var(--accent);
+    }
+
+    .diet-checkboxes {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .diet-chip {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 4px 10px;
+      font-size: 0.75rem;
+      cursor: pointer;
+      transition: all 0.15s;
+      user-select: none;
+    }
+
+    .diet-chip:hover {
+      border-color: var(--accent);
+    }
+
+    .diet-chip.active {
+      background: #052e16;
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    .diet-chip input {
+      display: none;
+    }
+
+    .btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 9px 14px;
+      border: none;
+      border-radius: var(--radius-sm);
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      width: 100%;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: #052e16;
+    }
+
+    .btn-primary:hover {
+      background: #86efac;
+    }
+
+    .btn-secondary {
+      background: var(--surface2);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+
+    .btn-secondary:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    .btn-danger {
+      background: transparent;
+      color: var(--danger);
+      border: 1px solid var(--danger);
+    }
+
+    .btn-danger:hover {
+      background: #450a0a;
+    }
+
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .auth-tabs {
+      display: flex;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .auth-tab {
+      flex: 1;
+      padding: 8px;
+      text-align: center;
+      cursor: pointer;
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      border-bottom: 2px solid transparent;
+      transition: all 0.2s;
+    }
+
+    .auth-tab.active {
+      color: var(--accent);
+      border-bottom-color: var(--accent);
+    }
+
+    .stats-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .stat-card {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 10px;
+      text-align: center;
+    }
+
+    .stat-card .val {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--accent);
+    }
+
+    .stat-card .lbl {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .divider {
+      border: none;
+      border-top: 1px solid var(--border);
+    }
+
+    /* ── Main chat area ───────────────────────────────────────────────────────── */
+    #main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    #topbar {
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--surface);
+      gap: 12px;
+    }
+
+    .topbar-title {
+      font-weight: 700;
+      font-size: 1rem;
+    }
+
+    .topbar-user {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+    }
+
+    .badge {
+      font-size: 0.7rem;
+      padding: 2px 8px;
+      border-radius: 20px;
+      font-weight: 600;
+    }
+
+    .badge-model {
+      background: #1e1b4b;
+      color: var(--accent2);
+    }
+
+    .model-select-mini {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text);
+      padding: 4px 8px;
+      font-size: 0.78rem;
+      cursor: pointer;
+    }
+
+    /* ── Message list ─────────────────────────────────────────────────────────── */
+    #messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      scroll-behavior: smooth;
+    }
+
+    .msg-row {
+      display: flex;
+      gap: 12px;
+      max-width: 820px;
+      width: 100%;
+      animation: fadeUp 0.2s ease;
+    }
+
+    .msg-row.user {
+      align-self: flex-end;
+      flex-direction: row-reverse;
+    }
+
+    .msg-row.assistant {
+      align-self: flex-start;
+    }
+
+    @keyframes fadeUp {
+      from {
+        opacity: 0;
+        transform: translateY(8px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .avatar {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+      flex-shrink: 0;
+      margin-top: 4px;
+    }
+
+    .avatar.user {
+      background: var(--user-bubble);
+    }
+
+    .avatar.bot {
+      background: #052e16;
+    }
+
+    .bubble {
+      padding: 12px 16px;
+      border-radius: var(--radius);
+      font-size: 0.88rem;
+      line-height: 1.6;
+      max-width: 680px;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .bubble.user {
+      background: var(--user-bubble);
+      border-bottom-right-radius: 4px;
+    }
+
+    .bubble.assistant {
+      background: var(--ai-bubble);
+      border: 1px solid var(--border);
+      border-bottom-left-radius: 4px;
+    }
+
+    .msg-meta {
+      margin-top: 6px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .tool-tag {
+      font-size: 0.68rem;
+      padding: 2px 8px;
+      border-radius: 20px;
+      background: #1e1b4b;
+      color: var(--accent2);
+      cursor: pointer;
+    }
+
+    .source-tag {
+      font-size: 0.68rem;
+      padding: 2px 8px;
+      border-radius: 20px;
+      background: #052e16;
+      color: var(--accent);
+    }
+
+    .ts {
+      font-size: 0.65rem;
+      color: var(--text-muted);
+    }
+
+    /* ── HITL memory confirmation ─────────────────────────────────────────────── */
+    .hitl-card {
+      background: #1c1917;
+      border: 1px solid var(--warning);
+      border-radius: var(--radius);
+      padding: 12px 16px;
+      margin-top: 8px;
+      max-width: 600px;
+    }
+
+    .hitl-card .hitl-label {
+      font-size: 0.75rem;
+      color: var(--warning);
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+
+    .hitl-card .hitl-fact {
+      font-size: 0.85rem;
+      margin-bottom: 10px;
+    }
+
+    .hitl-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .hitl-actions button {
+      flex: 1;
+      padding: 6px;
+      font-size: 0.8rem;
+      border-radius: var(--radius-sm);
+      border: none;
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    .hitl-confirm {
+      background: var(--accent);
+      color: #052e16;
+    }
+
+    .hitl-discard {
+      background: var(--surface2);
+      color: var(--text-muted);
+      border: 1px solid var(--border) !important;
+    }
+
+    /* ── Typing indicator ─────────────────────────────────────────────────────── */
+    .typing-dots {
+      display: flex;
+      gap: 5px;
+      padding: 6px 0;
+    }
+
+    .typing-dots span {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--text-muted);
+      animation: bounce 1.2s infinite;
+    }
+
+    .typing-dots span:nth-child(2) {
+      animation-delay: 0.2s;
+    }
+
+    .typing-dots span:nth-child(3) {
+      animation-delay: 0.4s;
+    }
+
+    @keyframes bounce {
+
+      0%,
+      80%,
+      100% {
+        transform: translateY(0);
+      }
+
+      40% {
+        transform: translateY(-6px);
+      }
+    }
+
+    /* ── Input bar ────────────────────────────────────────────────────────────── */
+    #input-area {
+      padding: 14px 20px;
+      border-top: 1px solid var(--border);
+      background: var(--surface);
+      display: flex;
+      gap: 10px;
+      align-items: flex-end;
+    }
+
+    #chat-input {
+      flex: 1;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--text);
+      padding: 10px 14px;
+      font-size: 0.88rem;
+      resize: none;
+      max-height: 140px;
+      outline: none;
+      transition: border-color 0.2s;
+      font-family: var(--font);
+      line-height: 1.5;
+    }
+
+    #chat-input:focus {
+      border-color: var(--accent);
+    }
+
+    #send-btn {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      border: none;
+      background: var(--accent);
+      color: #052e16;
+      font-size: 1.1rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      transition: all 0.2s;
+    }
+
+    #send-btn:hover {
+      background: #86efac;
+    }
+
+    #send-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    /* ── Toast ────────────────────────────────────────────────────────────────── */
+    #toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(60px);
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 10px 20px;
+      font-size: 0.85rem;
+      transition: transform 0.3s ease;
+      z-index: 999;
+      pointer-events: none;
+    }
+
+    #toast.show {
+      transform: translateX(-50%) translateY(0);
+    }
+
+    #toast.error {
+      border-color: var(--danger);
+      color: var(--danger);
+    }
+
+    #toast.success {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    /* ── Landing / auth screens ───────────────────────────────────────────────── */
+    #landing {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 20px;
+      gap: 16px;
+      text-align: center;
+    }
+
+    .landing-icon {
+      font-size: 4rem;
+    }
+
+    .landing-title {
+      font-size: 2rem;
+      font-weight: 800;
+    }
+
+    .landing-sub {
+      color: var(--text-muted);
+      max-width: 420px;
+      line-height: 1.6;
+      font-size: 0.95rem;
+    }
+
+    .feature-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: center;
+      margin-top: 8px;
+    }
+
+    .feature-chip {
+      font-size: 0.75rem;
+      padding: 5px 12px;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+    }
+
+    /* ── Export btn ───────────────────────────────────────────────────────────── */
+    .export-link {
+      font-size: 0.78rem;
+      color: var(--accent2);
+      text-decoration: underline;
+      cursor: pointer;
+      background: none;
+      border: none;
+      padding: 0;
+    }
+
+    /* ── Scrollbar ────────────────────────────────────────────────────────────── */
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: var(--border);
+      border-radius: 4px;
+    }
+
+    /* ── Mobile ───────────────────────────────────────────────────────────────── */
+    .hamburger {
+      display: none;
+      background: none;
+      border: none;
+      color: var(--text);
+      font-size: 1.4rem;
+      cursor: pointer;
+    }
+
+    @media (max-width: 640px) {
+      #sidebar {
+        position: fixed;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        z-index: 100;
+        transform: translateX(-100%);
+      }
+
+      #sidebar.open {
+        transform: translateX(0);
+        box-shadow: 4px 0 24px rgba(0, 0, 0, 0.5);
+      }
+
+      .hamburger {
+        display: block;
+      }
+
+      .msg-row {
+        max-width: 100%;
+      }
+    }
+
+    /* ── Section visibility ───────────────────────────────────────────────────── */
+    .hidden {
+      display: none !important;
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- ── Sidebar ──────────────────────────────────────────────────────────────── -->
+  <aside id="sidebar">
+    <div class="sidebar-logo">🥗 NutriBot</div>
+
+    <!-- AUTH SECTION -->
+    <div id="auth-section" class="sidebar-section">
+      <div class="auth-tabs">
+        <div class="auth-tab active" data-tab="signin" onclick="switchTab('signin')">Sign in</div>
+        <div class="auth-tab" data-tab="register" onclick="switchTab('register')">Register</div>
+      </div>
+
+      <div id="tab-signin">
+        <div class="input-group">
+          <label>Email</label>
+          <input type="email" id="login-email" placeholder="you@example.com" />
+        </div>
+        <div class="input-group">
+          <label>Password</label>
+          <input type="password" id="login-password" placeholder="••••••••" />
+        </div>
+        <br />
+        <button class="btn btn-primary" onclick="doLogin()">Sign in</button>
+      </div>
+
+      <div id="tab-register" class="hidden">
+        <div class="input-group">
+          <label>Email</label>
+          <input type="email" id="reg-email" placeholder="you@example.com" />
+        </div>
+        <div class="input-group">
+          <label>Password (min 8 chars)</label>
+          <input type="password" id="reg-password" placeholder="••••••••" />
+        </div>
+        <br />
+        <button class="btn btn-primary" onclick="doRegister()">Create account</button>
+      </div>
+    </div>
+
+    <!-- USER SECTION (shown when authenticated) -->
+    <div id="user-section" class="hidden">
+
+      <div class="sidebar-section">
+        <div class="sidebar-label">👤 Profile</div>
+        <div class="input-group"><label>Weight (kg)</label>
+          <input type="number" id="p-weight" min="20" max="300" step="0.5" onchange="saveProfile()" />
+        </div>
+        <div class="input-group"><label>Height (cm)</label>
+          <input type="number" id="p-height" min="100" max="250" step="0.5" onchange="saveProfile()" />
+        </div>
+        <div class="input-group"><label>Age</label>
+          <input type="number" id="p-age" min="10" max="120" step="1" onchange="saveProfile()" />
+        </div>
+        <div class="input-group">
+          <label>Gender</label>
+          <select id="p-gender" onchange="saveProfile()">
+            <option value="male">Male</option>
+            <option value="female">Female</option>
+          </select>
+        </div>
+        <div class="input-group">
+          <label>Activity Level</label>
+          <select id="p-activity" onchange="saveProfile()">
+            <option value="sedentary">Sedentary (desk job)</option>
+            <option value="light">Light (1–3 days/wk)</option>
+            <option value="moderate">Moderate (3–5 days/wk)</option>
+            <option value="active">Active (6–7 days/wk)</option>
+            <option value="very_active">Very Active (athlete)</option>
+          </select>
+        </div>
+        <div class="input-group">
+          <label>Goal</label>
+          <select id="p-goal" onchange="saveProfile()">
+            <option value="weight_loss">⬇️ Weight Loss</option>
+            <option value="maintenance">⚖️ Maintenance</option>
+            <option value="muscle_gain">💪 Muscle Gain</option>
+          </select>
+        </div>
+        <div class="input-group">
+          <label>Dietary Restrictions</label>
+          <div class="diet-checkboxes" id="diet-chips"></div>
+        </div>
+      </div>
+
+      <hr class="divider" />
+
+      <div class="sidebar-section">
+        <div class="sidebar-label">⚙️ Model</div>
+        <select id="model-select" class="model-select-mini" style="width:100%;padding:8px 10px;font-size:0.85rem;">
+          <option value="gpt-4o-mini">GPT-4o mini (fast)</option>
+          <option value="gpt-4o">GPT-4o (smart)</option>
+        </select>
+      </div>
+
+      <hr class="divider" />
+
+      <div class="sidebar-section">
+        <div class="sidebar-label">💰 Session Usage</div>
+        <div class="stats-row">
+          <div class="stat-card">
+            <div class="val" id="stat-tokens">0</div>
+            <div class="lbl">Tokens</div>
+          </div>
+          <div class="stat-card">
+            <div class="val" id="stat-cost">$0.0000</div>
+            <div class="lbl">Cost</div>
+          </div>
+        </div>
+      </div>
+
+      <hr class="divider" />
+
+      <div class="sidebar-section">
+        <button class="btn btn-secondary" onclick="clearChat()">🗑️ Clear chat</button>
+        <button class="export-link" onclick="exportChat()" style="margin-top:4px;">📤 Export JSON</button>
+        <button class="btn btn-danger" onclick="doLogout()">🔓 Sign out</button>
+      </div>
+
+    </div><!-- /user-section -->
+  </aside>
+
+  <!-- ── Main area ─────────────────────────────────────────────────────────────── -->
+  <main id="main">
+
+    <!-- Topbar -->
+    <div id="topbar">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <button class="hamburger" onclick="toggleSidebar()">☰</button>
+        <span class="topbar-title">🥗 NutriBot</span>
+      </div>
+      <div id="topbar-user" class="topbar-user hidden"></div>
+    </div>
+
+    <!-- Landing (unauthenticated) -->
+    <div id="landing">
+      <div class="landing-icon">🥗</div>
+      <div class="landing-title">NutriBot</div>
+      <div class="landing-sub">
+        Your AI nutrition coach powered by LangChain, RAG, and GPT-4o.
+        Sign in or register in the sidebar to start.
+      </div>
+      <div class="feature-chips">
+        <span class="feature-chip">🤖 LangChain Agent</span>
+        <span class="feature-chip">📚 RAG Knowledge Base</span>
+        <span class="feature-chip">🔢 BMI / TDEE / Macros</span>
+        <span class="feature-chip">🌿 Dietary Restrictions</span>
+        <span class="feature-chip">🧠 Long-term Memory</span>
+        <span class="feature-chip">🔐 Secure Auth</span>
+      </div>
+    </div>
+
+    <!-- Chat (authenticated) -->
+    <div id="chat-area" class="hidden" style="flex:1;display:flex;flex-direction:column;overflow:hidden;">
+      <div id="messages"></div>
+      <div id="input-area">
+        <textarea id="chat-input" rows="1" placeholder="Ask me anything about nutrition…" onkeydown="handleKey(event)"
+          oninput="autoResize(this)"></textarea>
+        <button id="send-btn" onclick="sendMessage()">➤</button>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Toast notification -->
+  <div id="toast"></div>
+
+  <script>
+    // ── Config ───────────────────────────────────────────────────────────────────
+    // Point this at your deployed backend (Railway / Render / Fly.io)
+    const API_BASE = window.location.hostname === 'localhost'
+      ? 'http://localhost:8000'
+      : 'https://nutribot-api-production.up.railway.app';   // ← replace before deploying
+
+    const DIET_OPTIONS = ['vegan', 'vegetarian', 'halal', 'kosher', 'gluten-free', 'nut-free', 'dairy-free'];
+
+    // ── State ────────────────────────────────────────────────────────────────────
+    let state = {
+      token: null,
+      email: null,
+      role: null,
+      messages: [],       // [{role,content,tools_used,sources,ts}]
+      totalTokens: 0,
+      totalCost: 0,
+      profile: {},
+      isTyping: false,
+    };
+
+    // ── Init ─────────────────────────────────────────────────────────────────────
+    (function init() {
+      // Build diet chips
+      const chipContainer = document.getElementById('diet-chips');
+      DIET_OPTIONS.forEach(opt => {
+        const label = document.createElement('label');
+        label.className = 'diet-chip';
+        label.dataset.val = opt;
+
+        const input = document.createElement('input');
+        input.type = 'checkbox';
+        input.value = opt;
+
+        input.addEventListener('change', () => {
+          label.classList.toggle('active', input.checked);
+          saveProfile();
+        });
+
+        label.appendChild(input);
+        label.append(` ${opt}`);
+
+        chipContainer.appendChild(label);
+      });
+
+      // Restore session from localStorage
+      const saved = localStorage.getItem('nutribot_session');
+      if (saved) {
+        try {
+          const s = JSON.parse(saved);
+          state.token = s.token;
+          state.email = s.email;
+          state.role = s.role;
+          enterApp();
+        } catch { localStorage.removeItem('nutribot_session'); }
+      }
+    })();
+
+    // ── Auth ─────────────────────────────────────────────────────────────────────
+    function switchTab(tab) {
+      document.querySelectorAll('.auth-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+      document.getElementById('tab-signin').classList.toggle('hidden', tab !== 'signin');
+      document.getElementById('tab-register').classList.toggle('hidden', tab !== 'register');
+    }
+
+    async function doLogin() {
+      const email = document.getElementById('login-email').value.trim();
+      const password = document.getElementById('login-password').value;
+      if (!email || !password) return toast('Please fill in all fields.', 'error');
+
+      const data = await api('/api/auth/login', { email, password });
+      if (!data) return;
+
+      state.token = data.token;
+      state.email = data.email;
+      state.role = data.role;
+      localStorage.setItem('nutribot_session', JSON.stringify({ token: data.token, email: data.email, role: data.role }));
+      enterApp();
+    }
+
+    async function doRegister() {
+      const email = document.getElementById('reg-email').value.trim();
+      const password = document.getElementById('reg-password').value;
+      if (!email || !password) return toast('Please fill in all fields.', 'error');
+
+      const data = await api('/api/auth/register', { email, password });
+      if (!data) return;
+      toast(data.message || 'Account created! Sign in now.', 'success');
+      switchTab('signin');
+      document.getElementById('login-email').value = email;
+    }
+
+    async function doLogout() {
+      if (state.token) await api('/api/auth/logout', { token: state.token });
+      state = { token: null, email: null, role: null, messages: [], totalTokens: 0, totalCost: 0, profile: {}, isTyping: false };
+      localStorage.removeItem('nutribot_session');
+      exitApp();
+    }
+
+    // ── App enter/exit ────────────────────────────────────────────────────────────
+    function enterApp() {
+      document.getElementById('auth-section').classList.add('hidden');
+      document.getElementById('user-section').classList.remove('hidden');
+      document.getElementById('landing').classList.add('hidden');
+      const chatArea = document.getElementById('chat-area');
+      chatArea.classList.remove('hidden');
+      chatArea.style.display = 'flex';
+      document.getElementById('topbar-user').classList.remove('hidden');
+      document.getElementById('topbar-user').textContent = `✉️ ${state.email}`;
+
+      loadProfile();
+      renderMessages();
+      toast(`Welcome back! 🥗`, 'success');
+    }
+
+    function exitApp() {
+      document.getElementById('auth-section').classList.remove('hidden');
+      document.getElementById('user-section').classList.add('hidden');
+      document.getElementById('landing').classList.remove('hidden');
+      document.getElementById('chat-area').classList.add('hidden');
+      document.getElementById('topbar-user').classList.add('hidden');
+      document.getElementById('messages').innerHTML = '';
+      updateStats();
+    }
+
+    // ── Profile ───────────────────────────────────────────────────────────────────
+    async function loadProfile() {
+      const data = await api('/api/profile/get', { token: state.token });
+      if (!data) return;
+      state.profile = data.profile;
+      applyProfileToUI(data.profile);
+    }
+
+    function applyProfileToUI(p) {
+      const setVal = (id, val) => { const el = document.getElementById(id); if (el && val != null) el.value = val; };
+      setVal('p-weight', p.weight_kg);
+      setVal('p-height', p.height_cm);
+      setVal('p-age', p.age);
+      setVal('p-gender', p.gender);
+      setVal('p-activity', p.activity_level);
+      setVal('p-goal', p.goal);
+
+      // Diet chips
+      const restrictions = (p.dietary_restrictions || '').split(',').map(s => s.trim()).filter(Boolean);
+      document.querySelectorAll('.diet-chip').forEach(chip => {
+        const val = chip.dataset.val;
+        const active = restrictions.includes(val);
+        chip.classList.toggle('active', active);
+        chip.querySelector('input').checked = active;
+      });
+    }
+
+    async function saveProfile() {
+      if (!state.token) return;
+      const restrictions = [];
+      document.querySelectorAll('.diet-chip input:checked').forEach(cb => restrictions.push(cb.value));
+
+      const profile = {
+        token: state.token,
+        weight_kg: parseFloat(document.getElementById('p-weight').value) || 70,
+        height_cm: parseFloat(document.getElementById('p-height').value) || 170,
+        age: parseInt(document.getElementById('p-age').value) || 30,
+        gender: document.getElementById('p-gender').value,
+        activity_level: document.getElementById('p-activity').value,
+        goal: document.getElementById('p-goal').value,
+        dietary_restrictions: restrictions.join(','),
+      };
+      const data = await api('/api/profile/save', profile);
+      if (data) { state.profile = data.profile; toast('Profile saved ✓', 'success'); }
+    }
+
+    // ── Chat ──────────────────────────────────────────────────────────────────────
+    function handleKey(e) {
+      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+    }
+
+    function autoResize(el) {
+      el.style.height = 'auto';
+      el.style.height = Math.min(el.scrollHeight, 140) + 'px';
+    }
+
+    async function sendMessage() {
+      if (state.isTyping) return;
+      const input = document.getElementById('chat-input');
+      const text = input.value.trim();
+      if (!text) return;
+
+      input.value = '';
+      input.style.height = 'auto';
+
+      // Add user message to local state & render
+      const userMsg = { role: 'user', content: text, ts: new Date().toLocaleTimeString() };
+      state.messages.push(userMsg);
+      appendMessage(userMsg);
+
+      // Show typing indicator
+      state.isTyping = true;
+      document.getElementById('send-btn').disabled = true;
+      const typingEl = appendTyping();
+
+      const model = document.getElementById('model-select').value;
+      const history = state.messages.slice(0, -1).map(m => ({ role: m.role, content: m.content }));
+
+      const data = await api('/api/chat', {
+        token: state.token,
+        message: text,
+        model,
+        chat_history: history,
+      });
+
+      typingEl.remove();
+      state.isTyping = false;
+      document.getElementById('send-btn').disabled = false;
+
+      if (!data) return;
+
+      const botMsg = {
+        role: 'assistant',
+        content: data.response,
+        tools_used: data.tools_used || [],
+        sources: data.sources || [],
+        pending_memories: data.pending_memories || [],
+        ts: new Date().toLocaleTimeString(),
+      };
+      state.messages.push(botMsg);
+      appendMessage(botMsg);
+
+      // Update usage stats
+      if (data.usage) {
+        state.totalTokens += data.usage.total_tokens || 0;
+        state.totalCost += data.usage.estimated_cost_usd || 0;
+        updateStats();
+      }
+    }
+
+    function appendMessage(msg) {
+      const container = document.getElementById('messages');
+      const row = document.createElement('div');
+      row.className = `msg-row ${msg.role}`;
+
+      const avatar = document.createElement('div');
+      avatar.className = `avatar ${msg.role === 'user' ? 'user' : 'bot'}`;
+      avatar.textContent = msg.role === 'user' ? '🧑' : '🥗';
+
+      const bubble = document.createElement('div');
+      bubble.className = `bubble ${msg.role === 'user' ? 'user' : 'assistant'}`;
+      bubble.textContent = msg.content;
+
+      const right = document.createElement('div');
+      right.style.display = 'flex';
+      right.style.flexDirection = 'column';
+      right.appendChild(bubble);
+
+      // Meta: tools, sources, timestamp
+      if (msg.tools_used?.length || msg.sources?.length || msg.ts) {
+        const meta = document.createElement('div');
+        meta.className = 'msg-meta';
+
+        if (msg.tools_used?.length) {
+          msg.tools_used.forEach(t => {
+            const tag = document.createElement('span');
+            tag.className = 'tool-tag';
+            tag.title = `Input: ${t.input}\nOutput: ${t.output}`;
+            tag.textContent = `🔧 ${t.name}`;
+            meta.appendChild(tag);
+          });
+        }
+        if (msg.sources?.length) {
+          const tag = document.createElement('span');
+          tag.className = 'source-tag';
+          tag.textContent = `📚 ${msg.sources.length} source(s)`;
+          meta.appendChild(tag);
+        }
+        if (msg.ts) {
+          const ts = document.createElement('span');
+          ts.className = 'ts';
+          ts.textContent = msg.ts;
+          meta.appendChild(ts);
+        }
+        right.appendChild(meta);
+      }
+
+      // HITL memory cards
+      if (msg.pending_memories?.length) {
+        msg.pending_memories.forEach(fact => {
+          const card = buildHITLCard(fact);
+          right.appendChild(card);
+        });
+      }
+
+      row.appendChild(avatar);
+      row.appendChild(right);
+      container.appendChild(row);
+      container.scrollTop = container.scrollHeight;
+    }
+
+    function buildHITLCard(fact) {
+      const card = document.createElement('div');
+      card.className = 'hitl-card';
+      card.innerHTML = `
+    <div class="hitl-label">⚠️ Memory Confirmation Required</div>
+    <div class="hitl-fact">Remember: "${fact}"</div>
+    <div class="hitl-actions">
+      <button class="hitl-confirm" onclick="confirmMemory(this, '${fact.replace(/'/g, "\\'")}')">✓ Confirm</button>
+      <button class="hitl-discard" onclick="this.closest('.hitl-card').remove()">✕ Discard</button>
+    </div>
+  `;
+      return card;
+    }
+
+    async function confirmMemory(btn, fact) {
+      const data = await api('/api/memories/confirm', { token: state.token, memory: fact });
+      if (data) {
+        btn.closest('.hitl-card').innerHTML = `<div style="color:var(--accent);font-size:0.82rem;">✅ Memory saved: "${fact}"</div>`;
+      }
+    }
+
+    function appendTyping() {
+      const container = document.getElementById('messages');
+      const row = document.createElement('div');
+      row.className = 'msg-row assistant';
+      row.id = 'typing-row';
+      row.innerHTML = `
+    <div class="avatar bot">🥗</div>
+    <div class="bubble assistant"><div class="typing-dots"><span></span><span></span><span></span></div></div>
+  `;
+      container.appendChild(row);
+      container.scrollTop = container.scrollHeight;
+      return row;
+    }
+
+    function renderMessages() {
+      const container = document.getElementById('messages');
+      container.innerHTML = '';
+      state.messages.forEach(m => appendMessage(m));
+    }
+
+    function clearChat() {
+      state.messages = [];
+      state.totalTokens = 0;
+      state.totalCost = 0;
+      document.getElementById('messages').innerHTML = '';
+      updateStats();
+    }
+
+    // ── Export ────────────────────────────────────────────────────────────────────
+    function exportChat() {
+      const payload = {
+        exported_at: new Date().toISOString(),
+        email: state.email,
+        model: document.getElementById('model-select').value,
+        total_tokens: state.totalTokens,
+        total_cost_usd: state.totalCost,
+        profile: state.profile,
+        messages: state.messages,
+      };
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `nutribot_${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+    }
+
+    // ── Stats ─────────────────────────────────────────────────────────────────────
+    function updateStats() {
+      document.getElementById('stat-tokens').textContent = state.totalTokens.toLocaleString();
+      document.getElementById('stat-cost').textContent = `$${state.totalCost.toFixed(4)}`;
+    }
+
+    // ── API helper ────────────────────────────────────────────────────────────────
+    async function api(path, body) {
+      try {
+        const res = await fetch(`${API_BASE}${path}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        if (res.ok) return await res.json();
+        const err = await res.json().catch(() => ({ detail: res.statusText }));
+        const msg = typeof err.detail === 'string' ? err.detail : JSON.stringify(err.detail);
+        toast(msg, 'error');
+        return null;
+      } catch (e) {
+        toast('Network error — is the backend running?', 'error');
+        return null;
+      }
+    }
+
+    // ── Toast ─────────────────────────────────────────────────────────────────────
+    let _toastTimer;
+    function toast(msg, type = '') {
+      const el = document.getElementById('toast');
+      el.textContent = msg;
+      el.className = `show ${type}`;
+      clearTimeout(_toastTimer);
+      _toastTimer = setTimeout(() => el.className = '', 3500);
+    }
+
+    // ── Sidebar mobile toggle ─────────────────────────────────────────────────────
+    function toggleSidebar() {
+      document.getElementById('sidebar').classList.toggle('open');
+    }
+    document.addEventListener('click', e => {
+      if (window.innerWidth <= 640) {
+        const sidebar = document.getElementById('sidebar');
+        if (!sidebar.contains(e.target) && !e.target.classList.contains('hamburger')) {
+          sidebar.classList.remove('open');
+        }
+      }
+    });
+  </script>
+</body>
+
+</html>
