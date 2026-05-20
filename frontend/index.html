@@ -856,9 +856,10 @@
   <script>
     // ── Config ───────────────────────────────────────────────────────────────────
     // Point this at your deployed backend (Railway / Render / Fly.io)
-    const API_BASE = window.location.hostname === 'localhost'
+    const _h = window.location.hostname;
+    const API_BASE = (_h === '' || _h === 'localhost' || _h === '127.0.0.1')
       ? 'http://localhost:8000'
-      : 'https://nutribot-production-d3d2.up.railway.app';   // production backend URL
+      : 'https://nutribot-production-d3d2.up.railway.app';
 
     const DIET_OPTIONS = ['vegan', 'vegetarian', 'halal', 'kosher', 'gluten-free', 'nut-free', 'dairy-free'];
 
@@ -897,6 +898,17 @@
 
         chipContainer.appendChild(label);
       });
+
+      // ── Backend health check ────────────────────────────────────────────────
+      fetch(`${API_BASE}/api/health`)
+        .then(r => r.ok
+          ? console.log('Backend OK:', API_BASE)
+          : toast(`Backend returned ${r.status}`, 'error'))
+        .catch(() => toast(
+          API_BASE.includes('localhost')
+            ? 'Local backend not running — run: uvicorn main:app --reload --port 8000'
+            : 'Cannot reach Railway backend — check deployment',
+          'error'));
 
       // Restore session from localStorage
       const saved = localStorage.getItem('nutribot_session');
