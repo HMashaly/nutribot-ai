@@ -50,10 +50,17 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],   # Restrict to your Netlify URL in production
+    allow_origins=[
+        "https://nutribot-elhoda.netlify.app",
+        "https://6a0bffff23b138158275df87--nutribot-elhoda.netlify.app",
+        "http://localhost:3000",
+        "http://localhost:5500",
+        "http://127.0.0.1:3000",
+        "null",           # file:// origin browsers send as "null"
+    ],
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization"],
 )
 
 session_manager = SessionManager()
