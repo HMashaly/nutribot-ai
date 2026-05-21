@@ -13,6 +13,8 @@ from langchain.tools import tool
 from langchain_core.documents import Document
 from langchain_openai import ChatOpenAI
 
+from config import settings
+
 
 def get_rag_tool(vectorstore, base_k: int = 4):
     """
@@ -25,7 +27,11 @@ def get_rag_tool(vectorstore, base_k: int = 4):
     )
     mqr = MultiQueryRetriever.from_llm(
         retriever=base_retriever,
-        llm=ChatOpenAI(model="gpt-4o-mini", temperature=0),
+        llm=ChatOpenAI(
+            model="gpt-4o-mini",
+            temperature=0,
+            api_key=settings.openai_api_key,
+        ),
     )
 
     @tool

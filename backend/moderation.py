@@ -3,14 +3,20 @@ moderation.py — Mistral content moderation wrapper.
 Fails open: if Mistral is unavailable, message passes through.
 """
 
-import os
-
 try:
     from mistralai import Mistral
 except Exception:
     Mistral = None  # type: ignore[assignment]
 
-BLOCKED_CATEGORIES = {"jailbreak", "violence_and_threats"}
+from config import settings
+
+MODERATION_POLICY = {
+    "jailbreak": 0.7,
+    "violence_and_threats": 0.7,
+    "self_harm": 0.7,
+    "criminal_content": 0.7,
+    "hate_and_discrimination": 0.7,
+}
 
 
 def check_message(user_message: str) -> tuple[bool, str]:
@@ -22,19 +28,19 @@ def check_message(user_message: str) -> tuple[bool, str]:
     if Mistral is None:
         return False, ""
 
-    api_key = os.getenv("MISTRAL_API_KEY", "")
-    if not api_key:
+    if not settings.mistral_api_key:
         return False, ""
 
     try:
-        client = Mistral(api_key=api_key)
+        client = Mistral(api_key=settings.mistral_api_key)
         response = client.classifiers.moderate(
-            model="mistral-moderation-2411",
+            model=settings.moderation_model,
             inputs=[{"role": "user", "content": user_message}],
         )
         result = response.results[0]
         for category, score in result.category_scores.items():
-            if category in BLOCKED_CATEGORIES and score > 0.7:
+            threshold = MODERATION_POLICY.get(category)
+            if threshold is not None and score > threshold:
                 return True, category
         return False, ""
     except Exception:

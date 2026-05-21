@@ -1,44 +1,27 @@
 """
 db.py — PostgreSQL helpers for NutriBot.
 Pure Python — no Streamlit imports.
-Reads DATABASE_URL from environment (set via .env or deployment platform).
+Reads the configured database URL from typed settings.
 """
 
 from __future__ import annotations
 
-import os
 from pathlib import Path
 from typing import Any
 
-from dotenv import load_dotenv
-
-load_dotenv()
-
 import psycopg
 from psycopg.rows import dict_row
+
+from config import settings
 
 
 # ── Connection ─────────────────────────────────────────────────────────────────
 
 def get_connection() -> psycopg.Connection:
-    database_url = os.getenv("DATABASE_URL")
-    if database_url:
-        return psycopg.connect(database_url, row_factory=dict_row)
-
-    def _req(name: str) -> str:
-        v = os.getenv(name)
-        if not v:
-            raise RuntimeError(f"Missing required environment variable: {name}")
-        return v
-
-    return psycopg.connect(
-        host=_req("POSTGRES_HOST"),
-        port=int(os.getenv("POSTGRES_PORT", "5432")),
-        dbname=_req("POSTGRES_DB"),
-        user=_req("POSTGRES_USER"),
-        password=_req("POSTGRES_PASSWORD"),
-        row_factory=dict_row,
-    )
+    database_url = settings.effective_database_url
+    if not database_url:
+        raise RuntimeError("Database configuration is missing.")
+    return psycopg.connect(database_url, row_factory=dict_row)
 
 
 def init_database() -> None:

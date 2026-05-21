@@ -1,61 +1,36 @@
 """
-qualified_nutrition_chatbot — LangChain agent wiring.
-Pure Python / LangChain only — no Streamlit imports here.
+NutriBot agent wiring.
+
+The public surface intentionally stays compatible with the old LangChain
+AgentExecutor path: callers can still call `.invoke(payload)` and receive a
+dict with `output` plus `intermediate_steps`.
 """
 
-import sys
-from pathlib import Path
+from __future__ import annotations
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT))
+from dataclasses import dataclass
+from types import SimpleNamespace
+from typing import Any
+
+from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
+from langchain_openai import ChatOpenAI
+from langgraph.prebuilt import create_react_agent
+
+from config import settings
+from db import get_memories
+from rag.ingest import load_vectorstore
+from rag.retriever import get_rag_tool
+from tools.nutrition_tools import (
+    calculate_bmi,
+    calculate_daily_calories,
+    calculate_macros,
+    check_dietary_compatibility,
+    remember_fact,
+    search_usda_food,
+)
 
 
-def _build_memory_block(user_id: str | None) -> str:
-    if not user_id:
-        return ""
-    from db import get_memories
-
-    memories = get_memories(user_id)
-    if not memories:
-        return ""
-    lines = "\n".join(f"- {m}" for m in memories)
-    return f"\nLong-term user facts (confirmed by user in previous sessions):\n{lines}\n"
-
-
-def create_nutribot_agent(model_name: str, user_id: str | None = None):
-    from dotenv import load_dotenv
-    from langchain.agents import AgentExecutor, create_tool_calling_agent
-    from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
-    from langchain_openai import ChatOpenAI
-
-    from rag.ingest import load_vectorstore
-    from rag.retriever import get_rag_tool
-    from tools.nutrition_tools import (
-        calculate_bmi,
-        calculate_daily_calories,
-        calculate_macros,
-        check_dietary_compatibility,
-        remember_fact,
-        search_usda_food,
-    )
-
-    load_dotenv()
-
-    vectorstore = load_vectorstore()
-    search_nutrition_knowledge = get_rag_tool(vectorstore)
-
-    tools = [
-        search_nutrition_knowledge,
-        calculate_bmi,
-        calculate_daily_calories,
-        calculate_macros,
-        check_dietary_compatibility,
-        remember_fact,
-        search_usda_food,
-    ]
-
-    system_rules = """You are NutriBot, a qualified AI nutrition coach.
+BASE_SYSTEM_RULES = """You are NutriBot, a qualified AI nutrition coach.
 
 You receive an up-to-date "Saved profile" on every question. That profile overrides generic advice — always personalise your answers using it.
 
@@ -92,24 +67,120 @@ CRITICAL RULES:
 4. END EVERY RESPONSE with: "⚠️ This is not medical advice. Consult a registered dietitian for personalised clinical guidance."
 """
 
-    system_rules += _build_memory_block(user_id)
 
-    prompt = ChatPromptTemplate.from_messages(
-        [
-            ("system", system_rules),
-            ("system", "Saved user profile (apply on this turn):\n{dietary_profile}"),
-            MessagesPlaceholder("chat_history"),
-            ("human", "{input}"),
-            MessagesPlaceholder("agent_scratchpad"),
+def _build_memory_block(user_id: str | None) -> str:
+    if not user_id:
+        return ""
+
+    memories = get_memories(user_id)
+    if not memories:
+        return ""
+    lines = "\n".join(f"- {m}" for m in memories)
+    return f"\nLong-term user facts (confirmed by user in previous sessions):\n{lines}\n"
+
+
+def _build_system_prompt(user_id: str | None, dietary_profile: str) -> str:
+    memory_block = _build_memory_block(user_id)
+    return (
+        f"{BASE_SYSTEM_RULES}"
+        f"{memory_block}\n"
+        f"Saved user profile (apply on this turn):\n{dietary_profile}"
+    )
+
+
+def _content_to_text(content: Any) -> str:
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        parts: list[str] = []
+        for item in content:
+            if isinstance(item, str):
+                parts.append(item)
+            elif isinstance(item, dict):
+                text = item.get("text")
+                if text:
+                    parts.append(str(text))
+        return "\n".join(parts).strip()
+    return str(content)
+
+
+def _history_to_messages(chat_history: list[tuple[str, str]]) -> list[Any]:
+    messages: list[Any] = []
+    for role, content in chat_history:
+        if role == "user":
+            messages.append(HumanMessage(content=content))
+        elif role == "assistant":
+            messages.append(AIMessage(content=content))
+    return messages
+
+
+def _extract_intermediate_steps(messages: list[Any]) -> list[tuple[Any, str]]:
+    tool_outputs: dict[str, str] = {}
+    for message in messages:
+        if isinstance(message, ToolMessage):
+            tool_outputs[message.tool_call_id] = _content_to_text(message.content)
+
+    intermediate_steps: list[tuple[Any, str]] = []
+    for message in messages:
+        if not isinstance(message, AIMessage):
+            continue
+        for tool_call in message.tool_calls:
+            action = SimpleNamespace(
+                tool=tool_call.get("name", "unknown"),
+                tool_input=tool_call.get("args", {}),
+            )
+            observation = tool_outputs.get(tool_call.get("id", ""), "")
+            intermediate_steps.append((action, observation))
+    return intermediate_steps
+
+
+@dataclass
+class NutriBotGraphAgent:
+    graph: Any
+    user_id: str | None
+
+    def invoke(self, payload: dict[str, Any]) -> dict[str, Any]:
+        system_prompt = _build_system_prompt(
+            user_id=self.user_id,
+            dietary_profile=str(payload.get("dietary_profile", "")),
+        )
+        messages = [
+            SystemMessage(content=system_prompt),
+            *_history_to_messages(payload.get("chat_history", [])),
+            HumanMessage(content=str(payload.get("input", ""))),
         ]
-    )
 
-    llm = ChatOpenAI(model=model_name, temperature=0)
-    agent = create_tool_calling_agent(llm, tools, prompt)
-    return AgentExecutor(
-        agent=agent,
-        tools=tools,
-        verbose=False,
-        return_intermediate_steps=True,
-        handle_parsing_errors=True,
-    )
+        result = self.graph.invoke({"messages": messages})
+        result_messages = result.get("messages", [])
+        final_ai_message = next(
+            (
+                message
+                for message in reversed(result_messages)
+                if isinstance(message, AIMessage) and not message.tool_calls
+            ),
+            None,
+        )
+
+        return {
+            "output": _content_to_text(final_ai_message.content) if final_ai_message else "",
+            "intermediate_steps": _extract_intermediate_steps(result_messages),
+        }
+
+
+def create_nutribot_agent(model_name: str, user_id: str | None = None):
+    vectorstore = load_vectorstore()
+    search_nutrition_knowledge = get_rag_tool(vectorstore)
+
+    tools = [
+        search_nutrition_knowledge,
+        calculate_bmi,
+        calculate_daily_calories,
+        calculate_macros,
+        check_dietary_compatibility,
+        remember_fact,
+        search_usda_food,
+    ]
+
+    llm = ChatOpenAI(model=model_name, temperature=0, api_key=settings.openai_api_key)
+    graph = create_react_agent(model=llm, tools=tools)
+    return NutriBotGraphAgent(graph=graph, user_id=user_id)

@@ -1,10 +1,32 @@
 FROM python:3.11-slim
-WORKDIR /app
-RUN apt-get update && apt-get install -y libpq-dev gcc && rm -rf /var/lib/apt/lists/*
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-COPY . .
-RUN python rag/ingest.py || echo "RAG ingest skipped (no OPENAI_API_KEY at build time)"
-EXPOSE 8000
-CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000}"]
 
+# System deps for psycopg.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends libpq-dev gcc \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install a pinned uv binary for reproducible builds.
+COPY --from=ghcr.io/astral-sh/uv:0.11.15 /uv /uvx /usr/local/bin/
+
+ENV UV_COMPILE_BYTECODE=1 \
+    UV_LINK_MODE=copy \
+    UV_NO_DEV=1 \
+    UV_NO_CACHE=1 \
+    UV_PYTHON_DOWNLOADS=never \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PATH="/app/.venv/bin:$PATH"
+
+WORKDIR /app
+
+# Install locked dependencies first for better layer caching.
+COPY pyproject.toml uv.lock ./
+RUN uv sync --locked --no-install-project --no-editable
+
+# Copy the application and install the project itself.
+COPY . .
+RUN chmod +x docker-entrypoint.sh \
+    && uv sync --locked --no-editable
+
+EXPOSE 8000
+CMD ["./docker-entrypoint.sh"]

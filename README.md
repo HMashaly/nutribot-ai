@@ -1,258 +1,233 @@
-# 🥗 NutriBot — AI Nutrition Coach
+# NutriBot
 
-> **An AI-powered nutrition coaching platform** built with LangChain, RAG (ChromaDB), OpenAI GPT-4o, FastAPI, and PostgreSQL — featuring a decoupled JS frontend deployed to Netlify.
+NutriBot is an AI nutrition coaching application built with a FastAPI backend, a static frontend, retrieval over a curated nutrition knowledge base, and PostgreSQL-backed authentication, profiles, memory, and session state.
 
----
+The project brings together `LangGraph` for agent orchestration, `LangChain` for tools and retrieval, `ChromaDB` for vector search, and OpenAI models for generation and embeddings. The chat system follows a ReAct-style agent loop, where the model reasons about the next step, uses tools when needed, observes tool results, and continues toward a grounded final answer.
 
-## 📌 Project Purpose
+## Architecture
 
-**NutriBot** addresses a critical gap in personal health management: generic chatbots cannot provide *personalised*, *dietary-restriction-aware*, *calculation-grounded* nutrition guidance. Most people rely on one-size-fits-all advice that ignores their weight, goals, halal/vegan constraints, or actual caloric needs.
+The system is organized as a small full-stack application with a clear split between UI, API, orchestration, retrieval, and persistence.
 
-**The problem it solves:** Users need a trustworthy, domain-restricted AI coach that retrieves expert-curated nutritional knowledge (RAG), runs precise calculations (BMI, TDEE, macros), validates food against dietary restrictions, and remembers their preferences across sessions — all within an ethical, moderated, and authenticated environment.
+```mermaid
+flowchart LR
+    user["User"]
+    frontend["Frontend<br/>Static HTML / CSS / JavaScript"]
+    backend["FastAPI Backend<br/>main.py"]
+    agent["LangGraph Agent<br/>functions/agent.py"]
+    tools["Nutrition Tools<br/>calculations, USDA, memory"]
+    rag["RAG Layer<br/>ChromaDB + retriever"]
+    db["PostgreSQL<br/>users, profiles, sessions, audits"]
+    openai["OpenAI Models<br/>generation + embeddings"]
+    mistral["Mistral Moderation<br/>(optional)"]
 
-**How it works:** A user authenticates, sets their health profile (weight, height, activity level, goal, dietary restrictions), and converses with a LangChain tool-calling agent. The agent dynamically routes each query to the right tool — RAG semantic search, calculation tools, USDA food lookup, or direct GPT response — then returns a grounded, personalised answer. Long-term memory is gated behind a Human-in-the-Loop (HITL) confirmation step before any fact is persisted.
-
----
-
-## 🏗️ Architecture
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│           Netlify (free, permanent)                         │
-│      frontend/index.html — Vanilla JS SPA                   │
-│  Auth · Profile · Chat UI · HITL · Stats · JSON Export      │
-└──────────────────────────┬──────────────────────────────────┘
-                           │  REST API (HTTPS)
-                           ▼
-┌─────────────────────────────────────────────────────────────┐
-│           FastAPI Backend (Railway / Render / Fly.io)       │
-│  main.py — /api/auth · /api/profile · /api/chat · /api/mem │
-│  session_manager.py — token-based sessions (8h TTL)        │
-└──────────────────────────┬──────────────────────────────────┘
-                           │
-                           ▼
-┌─────────────────────────────────────────────────────────────┐
-│           LangChain AgentExecutor (functions/agent.py)      │
-│  System rules + live user profile injected on every invoke  │
-└──┬──────────┬──────────┬──────────┬──────────┬─────────────┘
-   │          │          │          │          │
-   ▼          ▼          ▼          ▼          ▼
-RAG Tool   BMI/TDEE  Macros   DietCheck  USDA API   remember_fact
-ChromaDB   Calculator          Validator  FoodData   → HITL gate
-   │
-   ▼
-OpenAI text-embedding-3-small
-Mistral moderation API
-
-PostgreSQL: users · login_audit · user_memories · user_profiles
+    user --> frontend
+    frontend --> backend
+    backend --> mistral
+    backend --> agent
+    agent --> tools
+    agent --> rag
+    tools --> db
+    backend --> db
+    rag --> openai
+    agent --> openai
 ```
 
----
+- **Frontend:** static HTML/CSS/JavaScript app in [frontend/index.html](/Users/h/Turing/Capestone/nutribot1/frontend/index.html)
+- **Backend:** FastAPI API in [backend/main.py](/Users/h/Turing/Capestone/nutribot1/backend/main.py)
+- **Agent orchestration:** LangGraph-backed agent in [backend/functions/agent.py](/Users/h/Turing/Capestone/nutribot1/backend/functions/agent.py)
+- **Retrieval layer:** ChromaDB + LangChain retriever in [backend/rag](/Users/h/Turing/Capestone/nutribot1/backend/rag)
+- **Persistence:** PostgreSQL schema in [backend/sql/schema.sql](/Users/h/Turing/Capestone/nutribot1/backend/sql/schema.sql)
+- **Dependency management:** `uv` with [backend/pyproject.toml](/Users/h/Turing/Capestone/nutribot1/backend/pyproject.toml) and [backend/uv.lock](/Users/h/Turing/Capestone/nutribot1/backend/uv.lock)
 
-## ✨ Features
+## What This Project Demonstrates
 
-### AI Agent (Case 2 — AI Agent for Task Automation + Case 1 — RAG)
+This project was not built as a single-prompt chatbot. It applies several of the concepts typically covered across modern LLM application material and turns them into one working system.
+
 | Capability | Implementation |
-|---|---|
-| 🤖 LangChain Agent | `create_tool_calling_agent` + `AgentExecutor` (modern, not deprecated ReAct) |
-| 📚 RAG | ChromaDB + OpenAI `text-embedding-3-small` + `MultiQueryRetriever` (3 variants / query) |
-| 🔢 BMI Calculator | Mifflin–St Jeor formula, WHO categories |
-| 🔥 TDEE / Calories | Full BMR → TDEE → goal-adjusted target pipeline |
-| 🥗 Macros | Goal-specific protein/carb/fat ratios in grams |
-| 🌿 Dietary Check | Keyword-rule engine for vegan / vegetarian / halal / kosher / gluten-free / nut-free / dairy-free |
-| 🍎 USDA Lookup | Live `FoodData Central` API — per-100g nutritional data |
-| 🧠 Long-term Memory | PostgreSQL `user_memories` — HITL-confirmed only |
+| --- | --- |
+| `LangChain architecture` | LangChain is used for models, messages, tools, retrieval, and memory-oriented application flow. |
+| `LangGraph orchestration` | The agent is orchestrated with LangGraph in [backend/functions/agent.py](/Users/h/Turing/Capestone/nutribot1/backend/functions/agent.py) rather than a fixed request-response chain. |
+| `ReAct-style agent loop` | The chat flow follows a reason -> act -> observe pattern, with tool results fed back into the agent before the final answer. |
+| `RAG` | Answers are grounded with a curated nutrition knowledge base, embeddings, and ChromaDB retrieval instead of relying only on model recall. |
+| `Agentic RAG` | Retrieval is part of the tool-using agent loop, not a one-step pipeline bolted in front of generation. |
+| `Multi-query retrieval` | The retriever expands questions into multiple query variants to improve recall for differently phrased nutrition intents. |
+| `Function calling / tools` | The assistant can call nutrition calculation tools, a dietary compatibility tool, a USDA lookup tool, and a memory tool. |
+| `Memory` | The app combines session context, saved user profile data, and long-term confirmed memories. |
+| `Human-in-the-loop` | Durable user facts are only written to long-term memory after explicit user confirmation. |
+| `Grounded personalization` | Responses are personalized from persisted profile data and durable user facts while still staying grounded in retrieved knowledge. |
+| `Production concerns` | The backend includes authentication, PostgreSQL-backed sessions, rate limiting, moderation, typed config, tests, Docker support, and reproducible installs with `uv`. |
+| `Incremental ingest` | Knowledge ingestion uses hash-based re-embedding so changed source files can be refreshed deliberately instead of full reprocessing every time. |
+| `Operational reliability` | Logging and backend test coverage are included to support debugging and safer iteration. |
 
-### Backend (FastAPI)
-- REST endpoints replacing Streamlit's server-side logic
-- Opaque token sessions with 8-hour TTL
-- Mistral moderation on every message (jailbreak + violence guard)
-- bcrypt password hashing, rate limiting (5 attempts / 5 min), login audit log
+**Agentic orchestration with LangGraph**
 
-### Frontend (Vanilla JS → Netlify)
-- Zero build-step SPA — pure HTML/CSS/JS, one file
-- Deploys to **Netlify** free tier: **permanent**, no sleep, global CDN, custom domain support
-- Responsive sidebar (mobile-friendly hamburger menu)
-- Profile auto-save on every field change
-- HITL memory confirmation cards inline in chat
-- Session usage stats (tokens + estimated USD cost)
-- One-click JSON export of full session
+The request cycle below reflects the current chat flow in the backend, including moderation before agent execution and the tool-observation loop inside the LangGraph agent.
 
----
-
-## 🚀 Deployment Guide
-
-### Frontend → Netlify (permanent free hosting)
-
-1. Go to [netlify.com](https://netlify.com) and sign up (free, no credit card).
-2. Drag the `frontend/` folder into the Netlify dashboard → instant deploy.
-3. **Or** connect your GitHub repo: Netlify auto-deploys on every push.
-4. Edit `frontend/index.html` line 4 — replace `YOUR_BACKEND_URL_HERE` with your backend URL.
-5. Your app is live at `https://yourapp.netlify.app` — **forever free, no sleep**.
-
-### Backend → Railway (recommended, free tier available)
-
-```bash
-# 1. Install Railway CLI
-npm install -g @railway/cli
-
-# 2. Login & init
-railway login
-railway init
-
-# 3. Set environment variables in Railway dashboard:
-#    OPENAI_API_KEY, DATABASE_URL, MISTRAL_API_KEY (optional), USDA_API_KEY (optional)
-
-# 4. Deploy
-railway up
+```mermaid
+flowchart TD
+    user["User Question"] --> frontend["Frontend Request"]
+    frontend --> chat["FastAPI /api/chat"]
+    chat --> moderation["Moderation Check"]
+    moderation --> agent["LangGraph ReAct Agent"]
+    agent --> decide{"Need a tool?"}
+    decide -->|Yes| tools["Tools / RAG Retrieval"]
+    tools --> observation["Tool Result / Observation"]
+    observation --> agent
+    decide -->|No| answer["Final Answer"]
+    answer --> response["API Response"]
+    response --> frontend
 ```
 
-**Alternative free backends:** [Render](https://render.com) (free tier, spins down after 15min idle) · [Fly.io](https://fly.io) (3 free VMs)
+## Implemented Capabilities
 
-### Backend — Local Setup
+- Nutrition-focused chat API with domain-restricted assistant behavior
+- Profile-aware responses using persisted user profile data
+- Retrieval-augmented generation over curated nutrition documents
+- Tool-backed calculations for BMI, calorie targets, and macronutrients
+- Dietary compatibility checks for common restriction types
+- USDA food lookup tool
+- Human-confirmed long-term memory storage
+- Human-in-the-loop confirmation before durable memory is saved
+- PostgreSQL-backed authentication, login audit history, and server-side session management
+- Session restoration via backend validation on frontend startup
+- Login rate limiting based on recent failed login attempts
+- Input moderation gate before agent execution
+- Incremental embedding ingest with file hash tracking
+- Unit tests for auth/session behavior and core tool logic
+
+## Tech Stack
+
+- Python 3.11
+- FastAPI
+- LangChain
+- LangGraph
+- ChromaDB
+- PostgreSQL
+- OpenAI API
+- `uv`
+- Docker
+
+## Local Development
+
+### 1. Backend
 
 ```bash
-# 1. Clone & enter backend
-cd nutribot/backend
-
-# 2. Virtual environment
-python -m venv venv
-source venv/bin/activate    # Windows: venv\Scripts\activate
-
-# 3. Install dependencies
-pip install -r requirements.txt
-
-# 4. Configure environment
-cp .env.example .env
-# Edit .env — set OPENAI_API_KEY and DATABASE_URL
-
-# 5. Init PostgreSQL (free cloud: https://neon.tech)
-psql $DATABASE_URL < sql/schema.sql
-
-# 6. Build RAG knowledge base (ONE TIME)
-python rag/ingest.py
-
-# 7. Run
-uvicorn main:app --reload --port 8000
+cd /Users/h/Turing/Capestone/nutribot1/backend
+uv sync
+uv run uvicorn main:app --reload
 ```
 
-### Environment Variables
+Backend API docs:
 
-```env
-# Required
+- [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
+
+### 2. Frontend
+
+Open the frontend directly:
+
+- [frontend/index.html](/Users/h/Turing/Capestone/nutribot1/frontend/index.html)
+
+Or serve it locally:
+
+```bash
+cd /Users/h/Turing/Capestone/nutribot1/frontend
+python3 -m http.server 3000
+```
+
+Local frontend URL:
+
+- [http://127.0.0.1:3000](http://127.0.0.1:3000)
+
+## Environment Variables
+
+Create a `.env` in `backend/` based on [backend/.env.example](/Users/h/Turing/Capestone/nutribot1/backend/.env.example).
+
+Required:
+
+```bash
 OPENAI_API_KEY=sk-proj-...
-DATABASE_URL=postgresql://user:pass@host:5432/nutrition_db
-
-# Optional
-MISTRAL_API_KEY=...       # Enables content moderation
-USDA_API_KEY=DEMO_KEY     # 1000 req/day free — register at api.nal.usda.gov
-MODEL_NAME=gpt-4o-mini
-TEMPERATURE=0.0
+DATABASE_URL=postgresql://user:password@host:5432/nutrition_db
 ```
 
----
+Optional:
 
-## 📂 Repository Structure
-
-```
-nutribot/
-├── backend/                        # FastAPI Python backend
-│   ├── main.py                     # REST API — all endpoints
-│   ├── session_manager.py          # Token-based session store
-│   ├── auth.py                     # bcrypt auth + rate limiting
-│   ├── db.py                       # PostgreSQL helpers
-│   ├── config.py                   # pydantic-settings config
-│   ├── moderation.py               # Mistral moderation wrapper
-│   ├── token_counting.py           # Token + cost tracking
-│   ├── functions/
-│   │   └── agent.py                # LangChain AgentExecutor wiring
-│   ├── rag/
-│   │   ├── ingest.py               # Incremental embedding pipeline
-│   │   └── retriever.py            # MultiQueryRetriever as LangChain tool
-│   ├── tools/
-│   │   └── nutrition_tools.py      # BMI, TDEE, Macros, DietCheck, USDA
-│   ├── knowledgebase/              # 6 markdown nutrition knowledge files
-│   ├── sql/
-│   │   └── schema.sql              # PostgreSQL DDL (idempotent)
-│   ├── tests/
-│   │   └── test_tools.py           # Unit tests for nutrition tools
-│   └── requirements.txt
-│
-└── frontend/                       # Netlify-deployed SPA
-    ├── index.html                  # Complete app — HTML + CSS + JS
-    └── netlify.toml                # Netlify routing config
+```bash
+MISTRAL_API_KEY=
+USDA_API_KEY=DEMO_KEY
+SESSION_MAX_HOURS=8
 ```
 
----
+## Retrieval Ingest
 
-## 🧪 Evaluation Criteria Mapping
+To build or refresh the vector store locally:
 
-### Outcome Quality (Case 1 + Case 2)
-| Requirement | Evidence |
-|---|---|
-| Completeness | Full auth → profile → agent → RAG → memory pipeline working end-to-end |
-| User interface | Polished dark-mode SPA with sidebar profile, chat, HITL cards, usage stats |
-| Project goal clarity | This README section |
+```bash
+cd /Users/h/Turing/Capestone/nutribot1/backend
+uv run python rag/ingest.py
+```
 
-### Learning Application
-| Requirement | Evidence |
-|---|---|
-| LangChain | `create_tool_calling_agent` + `AgentExecutor` + `MultiQueryRetriever` |
-| ChromaDB / Vector DB | Persisted vectorstore with incremental ingest |
-| LLM APIs | OpenAI `ChatOpenAI` + `text-embedding-3-small`; Mistral moderation |
-| Prompt engineering | Dual system messages; profile injected on every invoke |
-| Best practices | Tool docstrings as descriptions; factory pattern; no Streamlit imports in agent |
+This writes local vector data to `backend/chroma_db`.
 
-### Ethical Considerations
-| Risk | Mitigation |
-|---|---|
-| **Medical misinformation** | Domain restriction in system prompt; always recommends consulting a professional |
-| **Dietary harm** | Conservative dietary checker; warns about cross-contamination; fail-safe keyword rules |
-| **Data privacy** | bcrypt passwords; HITL before persisting any personal fact; login audit trail |
-| **Content abuse** | Mistral moderation on every message; blocks jailbreak + violence categories |
-| **Bias** | Knowledge base is curated from WHO/NHS-aligned sources; no single cultural bias |
-| **Over-reliance** | Disclaimer in every response: "This is not medical advice" |
+## Testing
 
-### Presentation (SCR Framework)
-- **Situation:** Users lack personalised, trustworthy nutrition guidance and rely on generic chatbots
-- **Complication:** Generic AI ignores dietary restrictions, can't do precise calculations, and has no persistent memory
-- **Resolution:** NutriBot — a domain-restricted LangChain agent with RAG, 6 specialised tools, HITL memory, and secure auth; accessible via a production-ready decoupled architecture
+Run the backend test suite:
 
----
+```bash
+cd /Users/h/Turing/Capestone/nutribot1/backend
+uv run pytest tests/ -v
+```
 
-## 🛠️ API Reference
+## Docker
 
-| Method | Endpoint | Auth | Description |
-|---|---|---|---|
-| POST | `/api/auth/register` | — | Create account |
-| POST | `/api/auth/login` | — | Returns session token |
-| POST | `/api/auth/logout` | token | Invalidate session |
-| POST | `/api/profile/get` | token | Load saved profile |
-| POST | `/api/profile/save` | token | Upsert profile to DB |
-| POST | `/api/chat` | token | Send message → agent response |
-| POST | `/api/memories/get` | token | List confirmed memories |
-| POST | `/api/memories/confirm` | token | HITL — persist a memory |
-| POST | `/api/admin/stats` | admin token | User + audit stats |
-| GET  | `/api/health` | — | Health check |
+The backend container is defined in [backend/Dockerfile](/Users/h/Turing/Capestone/nutribot1/backend/Dockerfile).
 
----
+Build and run:
 
-## ⚠️ Known Limitations & Future Work
+```bash
+cd /Users/h/Turing/Capestone/nutribot1/backend
+docker build -t nutribot-backend .
+docker run --rm -p 8000:8000 \
+  -e OPENAI_API_KEY=sk-proj-... \
+  -e DATABASE_URL=postgresql://user:password@host:5432/nutrition_db \
+  nutribot-backend
+```
 
-| Issue | Suggested Fix |
-|---|---|
-| In-memory sessions reset on restart | Swap `SessionManager` dict for Redis |
-| ChromaDB is single-tenant | Migrate to Pinecone or Weaviate for multi-user vectorstore |
-| Cost table hardcoded | Pull from OpenAI pricing API |
-| No per-message feedback | Add 👍👎 buttons + `user_feedback` DB table |
-| Frontend calls backend directly | Add a BFF (Backend for Frontend) or API gateway for rate limiting per user |
+Optional startup ingest:
 
----
+```bash
+docker run --rm -p 8000:8000 \
+  -e OPENAI_API_KEY=sk-proj-... \
+  -e DATABASE_URL=postgresql://user:password@host:5432/nutrition_db \
+  -e RUN_RAG_INGEST=1 \
+  nutribot-backend
+```
 
-## 📄 License
+## Deployment
 
-MIT — commercial use allowed.
+Current configured deployment targets in the application:
 
----
+- **Frontend:** Netlify  
+  [https://nutribot-elhoda.netlify.app](https://nutribot-elhoda.netlify.app)
+- **Backend:** Render  
+  [https://nutribot-1-5xzm.onrender.com](https://nutribot-1-5xzm.onrender.com)
 
-*Built for the Turing College AI Engineering Capstone · May 2026 | Python 3.11 · FastAPI 0.115 · LangChain 0.3 · Netlify*
+Notes:
+
+- The frontend uses the Render backend URL outside local development.
+- CORS is currently hardcoded in the backend to preserve the deployed frontend behavior.
+- Sessions are validated via `POST /api/auth/me` when the frontend restores login state.
+
+## Repository Structure
+
+- [backend](/Users/h/Turing/Capestone/nutribot1/backend): API, auth, sessions, RAG, tools, tests, Docker files
+- [frontend](/Users/h/Turing/Capestone/nutribot1/frontend): static client and Netlify config
+- [backend/knowledgebase](/Users/h/Turing/Capestone/nutribot1/backend/knowledgebase): nutrition source documents
+- [backend/tests](/Users/h/Turing/Capestone/nutribot1/backend/tests): backend unit tests
+
+## Contributing
+
+External contributions are welcome.
+
+- Open an issue for bugs, ideas, or discussion
+- Submit a pull request with a focused change
+- Keep changes scoped and include tests where behavior changes

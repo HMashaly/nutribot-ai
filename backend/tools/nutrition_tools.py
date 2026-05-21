@@ -7,11 +7,12 @@ The remember_fact tool queues facts for HITL confirmation; the caller
 and returns them to the frontend for user confirmation.
 """
 
-import os
 from typing import ClassVar
 
 import requests
 from langchain.tools import tool
+
+from config import settings
 
 
 @tool
@@ -275,7 +276,7 @@ def search_usda_food(food_name: str) -> str:
     if not food_name.strip():
         return "Please provide a food name."
 
-    api_key = os.getenv("USDA_API_KEY", "DEMO_KEY")
+    api_key = settings.usda_api_key or "DEMO_KEY"
     url = "https://api.nal.usda.gov/fdc/v1/foods/search"
     params = {"query": food_name, "api_key": api_key, "pageSize": 1}
     try:

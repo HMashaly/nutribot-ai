@@ -876,7 +876,7 @@
     };
 
     // ── Init ─────────────────────────────────────────────────────────────────────
-    (function init() {
+    (async function init() {
       // Build diet chips
       const chipContainer = document.getElementById('diet-chips');
       DIET_OPTIONS.forEach(opt => {
@@ -910,18 +910,49 @@
             : 'Cannot reach Railway backend — check deployment',
           'error'));
 
-      // Restore session from localStorage
-      const saved = localStorage.getItem('nutribot_session');
-      if (saved) {
-        try {
-          const s = JSON.parse(saved);
-          state.token = s.token;
-          state.email = s.email;
-          state.role = s.role;
-          enterApp();
-        } catch { localStorage.removeItem('nutribot_session'); }
-      }
+      await restoreSession();
     })();
+
+    function resetSessionState() {
+      state = {
+        token: null,
+        email: null,
+        role: null,
+        messages: [],
+        totalTokens: 0,
+        totalCost: 0,
+        profile: {},
+        isTyping: false,
+      };
+    }
+
+    function clearSavedSession() {
+      resetSessionState();
+      localStorage.removeItem('nutribot_session');
+    }
+
+    async function restoreSession() {
+      const saved = localStorage.getItem('nutribot_session');
+      if (!saved) return;
+
+      try {
+        const s = JSON.parse(saved);
+        const data = await api('/api/auth/me', { token: s.token }, { silent: true });
+        if (!data) {
+          clearSavedSession();
+          exitApp();
+          return;
+        }
+
+        state.token = s.token;
+        state.email = data.email;
+        state.role = data.role;
+        enterApp();
+      } catch {
+        clearSavedSession();
+        exitApp();
+      }
+    }
 
     // ── Auth ─────────────────────────────────────────────────────────────────────
     function switchTab(tab) {
@@ -959,8 +990,7 @@
 
     async function doLogout() {
       if (state.token) await api('/api/auth/logout', { token: state.token });
-      state = { token: null, email: null, role: null, messages: [], totalTokens: 0, totalCost: 0, profile: {}, isTyping: false };
-      localStorage.removeItem('nutribot_session');
+      clearSavedSession();
       exitApp();
     }
 
@@ -1235,7 +1265,8 @@
     }
 
     // ── API helper ────────────────────────────────────────────────────────────────
-    async function api(path, body) {
+    async function api(path, body, options = {}) {
+      const { silent = false } = options;
       try {
         const res = await fetch(`${API_BASE}${path}`, {
           method: 'POST',
@@ -1245,10 +1276,10 @@
         if (res.ok) return await res.json();
         const err = await res.json().catch(() => ({ detail: res.statusText }));
         const msg = typeof err.detail === 'string' ? err.detail : JSON.stringify(err.detail);
-        toast(msg, 'error');
+        if (!silent) toast(msg, 'error');
         return null;
       } catch (e) {
-        toast('Network error — is the backend running?', 'error');
+        if (!silent) toast('Network error — is the backend running?', 'error');
         return null;
       }
     }

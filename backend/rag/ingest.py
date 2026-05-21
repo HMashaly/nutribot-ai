@@ -11,14 +11,13 @@ import hashlib
 import json
 from pathlib import Path
 
-from dotenv import load_dotenv
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_chroma import Chroma
 from langchain_community.document_loaders import TextLoader
 from langchain_openai import OpenAIEmbeddings
 from loguru import logger
 
-load_dotenv()
+from config import settings
 
 _ROOT = Path(__file__).parent.parent
 DATA_DIR = _ROOT / "knowledgebase"
@@ -93,7 +92,10 @@ def ingest(force: bool = False):
 
 def load_vectorstore():
     """Load the persisted ChromaDB vectorstore (must have run ingest first)."""
-    embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
+    embeddings = OpenAIEmbeddings(
+        model="text-embedding-3-small",
+        api_key=settings.openai_api_key,
+    )
     return Chroma(
         persist_directory=str(CHROMA_DIR),
         embedding_function=embeddings,

@@ -10,19 +10,8 @@ Run:
 
 from __future__ import annotations
 
-import importlib
-import sys
-from datetime import datetime, timezone
-from pathlib import Path
+from datetime import datetime
 from typing import Any
-
-from dotenv import load_dotenv
-
-load_dotenv()
-
-_ROOT = Path(__file__).resolve().parent
-if str(_ROOT) not in sys.path:
-    sys.path.insert(0, str(_ROOT))
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -36,6 +25,7 @@ from db import (
     load_user_profile,
     save_user_profile,
 )
+from functions.agent import create_nutribot_agent
 from moderation import check_message
 from token_counting import count_tokens, estimate_cost, run_agent_tracked
 from session_manager import SessionManager
@@ -135,8 +125,7 @@ def _format_dietary_profile(profile: dict) -> str:
 def _get_agent(model_name: str, user_id: str):
     cache_key = f"{model_name}:{user_id}"
     if cache_key not in _agent_cache:
-        agent_module = importlib.import_module("functions.agent")
-        _agent_cache[cache_key] = agent_module.create_nutribot_agent(
+        _agent_cache[cache_key] = create_nutribot_agent(
             model_name=model_name,
             user_id=user_id,
         )
@@ -156,27 +145,41 @@ async def startup():
 async def register(req: RegisterRequest, request: Request):
     result = create_user(req.email, req.password)
     if not result.ok:
-        raise HTTPException(status_code=400, detail=result.message)
+        raise HTTPException(status_code=result.status_code, detail=result.message)
     return {"message": result.message}
 
 
 @app.post("/api/auth/login")
 async def login(req: LoginRequest, request: Request):
     ip = request.client.host if request.client else None
-    result = authenticate_user(req.email, req.password, ip_address=ip)
+    user_agent = request.headers.get("user-agent")
+    result = authenticate_user(req.email, req.password, ip_address=ip, user_agent=user_agent)
     if not result.ok:
-        raise HTTPException(status_code=401, detail=result.message)
+        raise HTTPException(status_code=result.status_code, detail=result.message)
     user = result.user
     token = session_manager.create(
         user_id=str(user["id"]),
         email=user["email"],
         role=user.get("role", "user"),
+        ip_address=ip,
+        user_agent=user_agent,
     )
     return {
         "token": token,
         "user_id": str(user["id"]),
         "email": user["email"],
         "role": user.get("role", "user"),
+    }
+
+
+@app.post("/api/auth/me")
+async def who_am_i(req: TokenOnlyRequest):
+    session = _require_session(req.token)
+    return {
+        "user_id": session["user_id"],
+        "email": session["email"],
+        "role": session["role"],
+        "expires_at": session["expires_at"],
     }
 
 

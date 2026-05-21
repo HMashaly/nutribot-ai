@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     usda_api_key: str = "DEMO_KEY"
     mistral_api_key: str = ""
     session_max_hours: int = 8
+    moderation_model: str = "mistral-moderation-2411"
 
     model_config = SettingsConfigDict(
         env_file=".env",
