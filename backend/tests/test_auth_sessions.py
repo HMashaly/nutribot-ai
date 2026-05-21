@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
+from types import SimpleNamespace
 
 from fastapi.testclient import TestClient
 
@@ -235,3 +236,56 @@ def test_auth_me_rejects_unknown_session(monkeypatch):
         response = client.post("/api/auth/me", json={"token": "unknown-token"})
 
     assert response.status_code == 401
+
+
+def test_chat_returns_pending_memory_for_remember_fact_tool(monkeypatch):
+    monkeypatch.setattr(main, "init_database", lambda: None)
+    monkeypatch.setattr(
+        main,
+        "session_manager",
+        StubSessionManager(
+            {
+                "user_id": "user-1",
+                "email": "user@example.com",
+                "role": "user",
+                "expires_at": datetime.now(timezone.utc).isoformat(),
+            }
+        ),
+    )
+    monkeypatch.setattr(main, "check_message", lambda message: (False, None))
+    monkeypatch.setattr(main, "load_user_profile", lambda user_id: {})
+    monkeypatch.setattr(main, "_get_agent", lambda model_name, user_id: object())
+    monkeypatch.setattr(
+        main,
+        "run_agent_tracked",
+        lambda agent_executor, payload, model: (
+            {
+                "output": "I'll remember that preference.",
+                "intermediate_steps": [
+                    (
+                        SimpleNamespace(
+                            tool="remember_fact",
+                            tool_input={"fact": "User prefers grilled fish over red meat"},
+                        ),
+                        "📝 Queued for confirmation: 'User prefers grilled fish over red meat'",
+                    )
+                ],
+            },
+            SimpleNamespace(total_tokens=42, estimated_cost_usd=0.001),
+        ),
+    )
+
+    with TestClient(main.app) as client:
+        response = client.post(
+            "/api/chat",
+            json={
+                "token": "valid-token",
+                "message": "I prefer grilled fish over red meat.",
+                "model": "gpt-4o-mini",
+                "chat_history": [],
+            },
+        )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["pending_memories"] == ["User prefers grilled fish over red meat"]

@@ -266,11 +266,9 @@ async def chat(req: ChatRequest):
                         sources.append({"source": "knowledge_base", "content": chunk[:200]})
 
             if tool_name == "remember_fact":
-                # Extract the fact from the observation string
-                if "remember this" in obs_str.lower():
-                    fact = str(tool_input.get("fact", ""))
-                    if fact:
-                        pending_memories.append(fact)
+                fact = str(tool_input.get("fact", "")).strip()
+                if fact and fact not in pending_memories:
+                    pending_memories.append(fact)
 
         return {
             "response": response_text,
