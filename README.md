@@ -210,18 +210,64 @@ docker run --rm -p 8000:8000 \
 
 ## Deployment
 
-Current configured deployment targets in the application:
+Current deployment targets and public URLs:
 
 - **Frontend:** Netlify  
   [https://nutribot-elhoda.netlify.app](https://nutribot-elhoda.netlify.app)
-- **Backend:** Render  
-  [https://nutribot-1-5xzm.onrender.com](https://nutribot-1-5xzm.onrender.com)
+- **Backend:** Hugging Face Spaces  
+  Space repo: [https://huggingface.co/spaces/ElHoda-mashaly/nutribot-backend](https://huggingface.co/spaces/ElHoda-mashaly/nutribot-backend)  
+  Public backend domain: [https://elhoda-mashaly-nutribot-backend.hf.space](https://elhoda-mashaly-nutribot-backend.hf.space)
+- **Database:** Supabase Postgres
+
+Useful backend URLs:
+
+- Swagger UI API docs: [https://elhoda-mashaly-nutribot-backend.hf.space/docs](https://elhoda-mashaly-nutribot-backend.hf.space/docs)
+- Health check: [https://elhoda-mashaly-nutribot-backend.hf.space/api/health](https://elhoda-mashaly-nutribot-backend.hf.space/api/health)
+
+### Deploying the backend
+
+1. Create a Supabase project and run [backend/sql/schema.sql](/Users/h/Turing/Capestone/nutribot1/backend/sql/schema.sql) in the Supabase SQL Editor.
+2. Copy the Supabase **session pooler** connection string into `DATABASE_URL`.
+3. Create a Hugging Face **Docker Space** and keep the backend app files at the Space repo root.
+4. Add Hugging Face Space secrets:
+   - `DATABASE_URL`
+   - `OPENAI_API_KEY`
+   - `MISTRAL_API_KEY` if used
+5. Add Hugging Face Space variables:
+   - `USDA_API_KEY=DEMO_KEY`
+   - `SESSION_MAX_HOURS=8`
+   - `RUN_RAG_INGEST=1` if you want startup ingest
+6. Push changes to the Space repo. Hugging Face automatically rebuilds and redeploys on each push.
+7. Test the deployed backend with `/api/health` and `/docs`.
+
+### Deploying the frontend
+
+1. Update the production API base in [frontend/index.html](/Users/h/Turing/Capestone/nutribot1/frontend/index.html) to the Hugging Face backend domain.
+2. Deploy the `frontend/` directory to Netlify.
+3. Re-test login, profile save, chat, and memory confirmation against the deployed backend.
 
 Notes:
 
-- The frontend uses the Render backend URL outside local development.
-- CORS is currently hardcoded in the backend to preserve the deployed frontend behavior.
+- The frontend source is still hardcoded to the previous Render backend URL outside local development until `API_BASE` is updated.
+- CORS is currently hardcoded in the backend to preserve deployed frontend behavior.
 - Sessions are validated via `POST /api/auth/me` when the frontend restores login state.
+- Hugging Face free Spaces can sleep after inactivity, so the backend may cold-start on the next request.
+
+## API Endpoints
+
+| Method | Endpoint | Purpose |
+| --- | --- | --- |
+| `POST` | `/api/auth/register` | Create a user account |
+| `POST` | `/api/auth/login` | Sign in and receive a session token |
+| `POST` | `/api/auth/me` | Validate the current session token |
+| `POST` | `/api/auth/logout` | Revoke the current session |
+| `POST` | `/api/profile/get` | Load the saved user profile |
+| `POST` | `/api/profile/save` | Save or update the user profile |
+| `POST` | `/api/chat` | Send a nutrition question to the agent |
+| `POST` | `/api/memories/get` | Fetch confirmed long-term memories |
+| `POST` | `/api/memories/confirm` | Persist a user-confirmed memory |
+| `POST` | `/api/admin/stats` | Admin-only usage and login stats |
+| `GET` | `/api/health` | Health check endpoint |
 
 ## Repository Structure
 
