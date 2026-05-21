@@ -4,6 +4,16 @@ NutriBot is an AI nutrition coaching application built with a FastAPI backend, a
 
 The project brings together `LangGraph` for agent orchestration, `LangChain` for tools and retrieval, `ChromaDB` for vector search, and OpenAI models for generation and embeddings. The chat system follows a ReAct-style agent loop, where the model reasons about the next step, uses tools when needed, observes tool results, and continues toward a grounded final answer.
 
+## Live Deployment
+
+NutriBot is currently running across three hosted services:
+
+| Service | Role | Live Location |
+| --- | --- | --- |
+| `Cloudflare Workers` | Frontend | [https://cloudflare-workers-autoconfig-nutribot-ai.h-elmashaly.workers.dev](https://cloudflare-workers-autoconfig-nutribot-ai.h-elmashaly.workers.dev) |
+| `Hugging Face Spaces` | Backend API | [https://elhoda-mashaly-nutribot-backend.hf.space](https://elhoda-mashaly-nutribot-backend.hf.space) |
+| `Supabase` | PostgreSQL database | Supabase-hosted Postgres via `DATABASE_URL` |
+
 ## Project Purpose
 
 **The problem it solves:** Users need a trustworthy, domain-restricted AI coach that retrieves expert-curated nutritional knowledge, runs precise calculations such as BMI, TDEE, and macros, validates food against dietary restrictions, and remembers their preferences across sessions, all within an ethical, moderated, and authenticated environment.
@@ -212,12 +222,20 @@ docker run --rm -p 8000:8000 \
 
 Current deployment targets and public URLs:
 
-- **Frontend:** Netlify  
-  [https://nutribot-elhoda.netlify.app](https://nutribot-elhoda.netlify.app)
+- **Frontend:** Cloudflare Workers  
+  [https://cloudflare-workers-autoconfig-nutribot-ai.h-elmashaly.workers.dev](https://cloudflare-workers-autoconfig-nutribot-ai.h-elmashaly.workers.dev)
 - **Backend:** Hugging Face Spaces  
   Space repo: [https://huggingface.co/spaces/ElHoda-mashaly/nutribot-backend](https://huggingface.co/spaces/ElHoda-mashaly/nutribot-backend)  
   Public backend domain: [https://elhoda-mashaly-nutribot-backend.hf.space](https://elhoda-mashaly-nutribot-backend.hf.space)
 - **Database:** Supabase Postgres
+
+### Hosted Services Overview
+
+| Platform | What runs there | Notes |
+| --- | --- | --- |
+| `Cloudflare Workers` | Static frontend from `frontend/` | Public browser entry point for the app |
+| `Hugging Face Spaces` | Dockerized FastAPI backend | Serves the REST API and Swagger docs at `/docs` |
+| `Supabase` | Managed PostgreSQL database | Stores users, profiles, sessions, memories, and audit data |
 
 Useful backend URLs:
 
@@ -243,12 +261,11 @@ Useful backend URLs:
 ### Deploying the frontend
 
 1. Update the production API base in [frontend/index.html](/Users/h/Turing/Capestone/nutribot1/frontend/index.html) to the Hugging Face backend domain.
-2. Deploy the `frontend/` directory to Netlify.
+2. Deploy the `frontend/` directory to Cloudflare Workers / Pages.
 3. Re-test login, profile save, chat, and memory confirmation against the deployed backend.
 
 Notes:
 
-- The frontend source is still hardcoded to the previous Render backend URL outside local development until `API_BASE` is updated.
 - CORS is currently hardcoded in the backend to preserve deployed frontend behavior.
 - Sessions are validated via `POST /api/auth/me` when the frontend restores login state.
 - Hugging Face free Spaces can sleep after inactivity, so the backend may cold-start on the next request.
@@ -272,7 +289,7 @@ Notes:
 ## Repository Structure
 
 - [backend](/Users/h/Turing/Capestone/nutribot1/backend): API, auth, sessions, RAG, tools, tests, Docker files
-- [frontend](/Users/h/Turing/Capestone/nutribot1/frontend): static client and Netlify config
+- [frontend](/Users/h/Turing/Capestone/nutribot1/frontend): static client for local and Cloudflare deployment
 - [backend/knowledgebase](/Users/h/Turing/Capestone/nutribot1/backend/knowledgebase): nutrition source documents
 - [backend/tests](/Users/h/Turing/Capestone/nutribot1/backend/tests): backend unit tests
 
