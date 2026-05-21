@@ -4,6 +4,12 @@ NutriBot is an AI nutrition coaching application built with a FastAPI backend, a
 
 The project brings together `LangGraph` for agent orchestration, `LangChain` for tools and retrieval, `ChromaDB` for vector search, and OpenAI models for generation and embeddings. The chat system follows a ReAct-style agent loop, where the model reasons about the next step, uses tools when needed, observes tool results, and continues toward a grounded final answer.
 
+## Project Purpose
+
+**The problem it solves:** Users need a trustworthy, domain-restricted AI coach that retrieves expert-curated nutritional knowledge, runs precise calculations such as BMI, TDEE, and macros, validates food against dietary restrictions, and remembers their preferences across sessions, all within an ethical, moderated, and authenticated environment.
+
+**How it works:** A user authenticates, sets a health profile such as weight, height, activity level, goal, and dietary restrictions, and then chats with a LangGraph-orchestrated tool-using agent. The agent dynamically routes each query to the right capability, including retrieval over the nutrition knowledge base, calculation tools, USDA food lookup, or direct model reasoning, and returns a grounded personalized answer. Long-term memory is gated behind a Human-in-the-Loop confirmation step before any durable fact is persisted.
+
 ## Architecture
 
 The system is organized as a small full-stack application with a clear split between UI, API, orchestration, retrieval, and persistence.
