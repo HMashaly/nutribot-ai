@@ -1,40 +1,87 @@
-# NutriBot
+<div align="center">
 
-NutriBot is an AI nutrition coaching application built with a FastAPI backend, a static frontend, retrieval over a curated nutrition knowledge base, and PostgreSQL-backed authentication, profiles, memory, and session state.
+# 🥦 NutriBot
 
-The project brings together `LangGraph` for agent orchestration, `LangChain` for tools and retrieval, `ChromaDB` for vector search, and OpenAI models for generation and embeddings. The chat system follows a ReAct-style agent loop, where the model reasons about the next step, uses tools when needed, observes tool results, and continues toward a grounded final answer.
+### *Your AI-Powered Nutrition Coach*
 
-## Live Deployment
+> A domain-restricted, retrieval-augmented, tool-using AI assistant that delivers personalized nutritional guidance — grounded in expert knowledge, backed by precise calculations, and secured with full authentication.
 
-NutriBot is currently running across three hosted services:
+<br/>
 
-| Service | Role | Live Location |
-| --- | --- | --- |
-| `Cloudflare Workers` | Frontend | [https://cloudflare-workers-autoconfig-nutribot-ai.h-elmashaly.workers.dev](https://cloudflare-workers-autoconfig-nutribot-ai.h-elmashaly.workers.dev) |
-| `Hugging Face Spaces` | Backend API | [https://elhoda-mashaly-nutribot-backend.hf.space](https://elhoda-mashaly-nutribot-backend.hf.space) |
-| `Supabase` | PostgreSQL database | Supabase-hosted Postgres via `DATABASE_URL` |
+[![Python](https://img.shields.io/badge/Python-3.11-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://python.org)
+[![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
+[![LangChain](https://img.shields.io/badge/LangChain-1C3C3C?style=for-the-badge&logo=langchain&logoColor=white)](https://langchain.com)
+[![OpenAI](https://img.shields.io/badge/OpenAI-412991?style=for-the-badge&logo=openai&logoColor=white)](https://openai.com)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-336791?style=for-the-badge&logo=postgresql&logoColor=white)](https://postgresql.org)
+[![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://docker.com)
 
-## Project Purpose
+<br/>
 
-**The problem it solves:** Users need a trustworthy, domain-restricted AI coach that retrieves expert-curated nutritional knowledge, runs precise calculations such as BMI, TDEE, and macros, validates food against dietary restrictions, and remembers their preferences across sessions, all within an ethical, moderated, and authenticated environment.
+🌐 **[Live App](https://cloudflare-workers-autoconfig-nutribot-ai.h-elmashaly.workers.dev)** &nbsp;|&nbsp;
+⚡ **[API Docs](https://elhoda-mashaly-nutribot-backend.hf.space/docs)** &nbsp;|&nbsp;
+💚 **[Health Check](https://elhoda-mashaly-nutribot-backend.hf.space/api/health)**
 
-**How it works:** A user authenticates, sets a health profile such as weight, height, activity level, goal, and dietary restrictions, and then chats with a LangGraph-orchestrated tool-using agent. The agent dynamically routes each query to the right capability, including retrieval over the nutrition knowledge base, calculation tools, USDA food lookup, or direct model reasoning, and returns a grounded personalized answer. Long-term memory is gated behind a Human-in-the-Loop confirmation step before any durable fact is persisted.
+</div>
 
-## Architecture
+---
 
-The system is organized as a small full-stack application with a clear split between UI, API, orchestration, retrieval, and persistence.
+## 🌿 What Is NutriBot?
+
+NutriBot is a full-stack AI application that acts as a personal nutrition coach. It combines a **LangGraph-orchestrated ReAct agent**, a **curated RAG knowledge base**, and a suite of **domain-specific tools** to answer nutrition questions with accuracy, personalization, and transparency.
+
+A user authenticates, builds a health profile, and chats with an agent that reasons over retrieved knowledge, runs calculations, and remembers confirmed preferences — all within an ethical, rate-limited, and moderated environment.
+
+---
+
+## 🚀 Live Deployment
+
+| 🏗️ Service | ⚙️ Role | 🔗 URL |
+|:---:|:---:|:---|
+| **Cloudflare Workers** | Frontend | [cloudflare-workers-autoconfig-nutribot-ai.h-elmashaly.workers.dev](https://cloudflare-workers-autoconfig-nutribot-ai.h-elmashaly.workers.dev) |
+| **Hugging Face Spaces** | Backend API | [elhoda-mashaly-nutribot-backend.hf.space](https://elhoda-mashaly-nutribot-backend.hf.space) |
+| **Supabase** | PostgreSQL Database | Managed Postgres via `DATABASE_URL` |
+
+---
+
+## 🧠 How It Works
+
+```
+User → Authenticates → Sets Health Profile → Chats with Agent
+                                                      ↓
+                               ┌──────────────────────────────────┐
+                               │        LangGraph ReAct Loop      │
+                               │  Reason → Use Tool → Observe     │
+                               │  → Reason → Final Answer         │
+                               └──────────────────────────────────┘
+                                              ↓
+                     Grounded · Personalized · Calculation-Backed
+```
+
+Each message is **moderated**, then passed to the agent, which dynamically chooses between:
+
+- 📚 Retrieving from the nutrition knowledge base
+- 🔢 Running BMI / TDEE / macro calculations
+- 🥗 Checking dietary compatibility
+- 🔍 Looking up foods via the USDA database
+- 🧠 Recalling confirmed long-term memories
+
+> Long-term memory is only persisted after **explicit user confirmation** — nothing is stored without your approval.
+
+---
+
+## 🗺️ System Architecture
 
 ```mermaid
 flowchart LR
-    user["User"]
-    frontend["Frontend<br/>Static HTML / CSS / JavaScript"]
-    backend["FastAPI Backend<br/>main.py"]
-    agent["LangGraph Agent<br/>functions/agent.py"]
-    tools["Nutrition Tools<br/>calculations, USDA, memory"]
-    rag["RAG Layer<br/>ChromaDB + retriever"]
-    db["PostgreSQL<br/>users, profiles, sessions, audits"]
-    openai["OpenAI Models<br/>generation + embeddings"]
-    mistral["Mistral Moderation<br/>(optional)"]
+    user["👤 User"]
+    frontend["🖥️ Frontend\nStatic HTML / CSS / JS"]
+    backend["⚡ FastAPI Backend\nmain.py"]
+    agent["🤖 LangGraph Agent\nfunctions/agent.py"]
+    tools["🔧 Nutrition Tools\ncalculations, USDA, memory"]
+    rag["📚 RAG Layer\nChromaDB + retriever"]
+    db["🗄️ PostgreSQL\nusers, profiles, sessions"]
+    openai["🧠 OpenAI Models\ngeneration + embeddings"]
+    mistral["🛡️ Mistral Moderation\n(optional)"]
 
     user --> frontend
     frontend --> backend
@@ -48,232 +95,192 @@ flowchart LR
     agent --> openai
 ```
 
-- **Frontend:** static HTML/CSS/JavaScript app in [frontend/index.html](/Users/h/Turing/Capestone/nutribot1/frontend/index.html)
-- **Backend:** FastAPI API in [backend/main.py](/Users/h/Turing/Capestone/nutribot1/backend/main.py)
-- **Agent orchestration:** LangGraph-backed agent in [backend/functions/agent.py](/Users/h/Turing/Capestone/nutribot1/backend/functions/agent.py)
-- **Retrieval layer:** ChromaDB + LangChain retriever in [backend/rag](/Users/h/Turing/Capestone/nutribot1/backend/rag)
-- **Persistence:** PostgreSQL schema in [backend/sql/schema.sql](/Users/h/Turing/Capestone/nutribot1/backend/sql/schema.sql)
-- **Dependency management:** `uv` with [backend/pyproject.toml](/Users/h/Turing/Capestone/nutribot1/backend/pyproject.toml) and [backend/uv.lock](/Users/h/Turing/Capestone/nutribot1/backend/uv.lock)
+| Layer | File |
+|:---|:---|
+| 🖥️ Frontend | [`frontend/index.html`](frontend/index.html) |
+| ⚡ Backend API | [`backend/main.py`](backend/main.py) |
+| 🤖 Agent Orchestration | [`backend/functions/agent.py`](backend/functions/agent.py) |
+| 📚 Retrieval (RAG) | [`backend/rag/`](backend/rag) |
+| 🗄️ Database Schema | [`backend/sql/schema.sql`](backend/sql/schema.sql) |
+| 📦 Dependencies | [`backend/pyproject.toml`](backend/pyproject.toml) via `uv` |
 
-## What This Project Demonstrates
+---
 
-This project was not built as a single-prompt chatbot. It applies several of the concepts typically covered across modern LLM application material and turns them into one working system.
-
-| Capability | Implementation |
-| --- | --- |
-| `LangChain architecture` | LangChain is used for models, messages, tools, retrieval, and memory-oriented application flow. |
-| `LangGraph orchestration` | The agent is orchestrated with LangGraph in [backend/functions/agent.py](/Users/h/Turing/Capestone/nutribot1/backend/functions/agent.py) rather than a fixed request-response chain. |
-| `ReAct-style agent loop` | The chat flow follows a reason -> act -> observe pattern, with tool results fed back into the agent before the final answer. |
-| `RAG` | Answers are grounded with a curated nutrition knowledge base, embeddings, and ChromaDB retrieval instead of relying only on model recall. |
-| `Agentic RAG` | Retrieval is part of the tool-using agent loop, not a one-step pipeline bolted in front of generation. |
-| `Multi-query retrieval` | The retriever expands questions into multiple query variants to improve recall for differently phrased nutrition intents. |
-| `Function calling / tools` | The assistant can call nutrition calculation tools, a dietary compatibility tool, a USDA lookup tool, and a memory tool. |
-| `Memory` | The app combines session context, saved user profile data, and long-term confirmed memories. |
-| `Human-in-the-loop` | Durable user facts are only written to long-term memory after explicit user confirmation. |
-| `Grounded personalization` | Responses are personalized from persisted profile data and durable user facts while still staying grounded in retrieved knowledge. |
-| `Production concerns` | The backend includes authentication, PostgreSQL-backed sessions, rate limiting, moderation, typed config, tests, Docker support, and reproducible installs with `uv`. |
-| `Incremental ingest` | Knowledge ingestion uses hash-based re-embedding so changed source files can be refreshed deliberately instead of full reprocessing every time. |
-| `Operational reliability` | Logging and backend test coverage are included to support debugging and safer iteration. |
-
-**Agentic orchestration with LangGraph**
-
-The request cycle below reflects the current chat flow in the backend, including moderation before agent execution and the tool-observation loop inside the LangGraph agent.
+## ⚙️ Agent Flow
 
 ```mermaid
 flowchart TD
-    user["User Question"] --> frontend["Frontend Request"]
-    frontend --> chat["FastAPI /api/chat"]
-    chat --> moderation["Moderation Check"]
-    moderation --> agent["LangGraph ReAct Agent"]
-    agent --> decide{"Need a tool?"}
-    decide -->|Yes| tools["Tools / RAG Retrieval"]
-    tools --> observation["Tool Result / Observation"]
+    user["💬 User Question"] --> frontend["🖥️ Frontend Request"]
+    frontend --> chat["⚡ FastAPI /api/chat"]
+    chat --> moderation["🛡️ Moderation Check"]
+    moderation --> agent["🤖 LangGraph ReAct Agent"]
+    agent --> decide{"🤔 Need a tool?"}
+    decide -->|Yes| tools["🔧 Tools / RAG Retrieval"]
+    tools --> observation["👁️ Tool Result / Observation"]
     observation --> agent
-    decide -->|No| answer["Final Answer"]
-    answer --> response["API Response"]
+    decide -->|No| answer["✅ Final Answer"]
+    answer --> response["📤 API Response"]
     response --> frontend
 ```
 
-## Implemented Capabilities
+---
 
-- Nutrition-focused chat API with domain-restricted assistant behavior
-- Profile-aware responses using persisted user profile data
-- Retrieval-augmented generation over curated nutrition documents
-- Tool-backed calculations for BMI, calorie targets, and macronutrients
-- Dietary compatibility checks for common restriction types
-- USDA food lookup tool
-- Human-confirmed long-term memory storage
-- Human-in-the-loop confirmation before durable memory is saved
-- PostgreSQL-backed authentication, login audit history, and server-side session management
-- Session restoration via backend validation on frontend startup
-- Login rate limiting based on recent failed login attempts
-- Input moderation gate before agent execution
-- Incremental embedding ingest with file hash tracking
-- Unit tests for auth/session behavior and core tool logic
+## ✨ Capabilities
 
-## Tech Stack
+| 🏷️ Capability | 💡 How It's Built |
+|:---|:---|
+| 🤖 **LangGraph Orchestration** | Agent graph instead of a fixed request-response chain |
+| 🔄 **ReAct Agent Loop** | Reason → Act → Observe cycle with tool results fed back before the final answer |
+| 📚 **Retrieval-Augmented Generation** | Curated nutrition documents embedded into ChromaDB; answers grounded in sources |
+| 🔗 **Agentic RAG** | Retrieval is a first-class tool in the agent loop, not a pre-processing step |
+| 🔍 **Multi-Query Retrieval** | Questions expanded into multiple variants for better recall across phrasing |
+| 🔧 **Function Calling / Tools** | BMI, TDEE, macros, dietary compatibility, USDA food lookup, memory tool |
+| 🧠 **Layered Memory** | Session context + persisted profile + confirmed long-term facts |
+| 🙋 **Human-in-the-Loop** | Durable facts require explicit user confirmation before being saved |
+| 🎯 **Grounded Personalization** | Profile-aware responses anchored in retrieved knowledge |
+| 🏭 **Production-Ready** | Auth, rate limiting, moderation, typed config, tests, Docker, `uv` |
+| ♻️ **Incremental Ingest** | Hash-based re-embedding — only changed files are reprocessed |
 
-- Python 3.11
-- FastAPI
-- LangChain
-- LangGraph
-- ChromaDB
-- PostgreSQL
-- OpenAI API
-- `uv`
-- Docker
+---
 
-## Local Development
+## 🛠️ Tech Stack
 
-### 1. Backend
+<div align="center">
+
+| 🧩 Technology | 🎯 Role |
+|:---:|:---|
+| ![Python](https://img.shields.io/badge/Python_3.11-3776AB?style=flat-square&logo=python&logoColor=white) | Core language |
+| ![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=flat-square&logo=fastapi&logoColor=white) | REST API framework |
+| ![LangChain](https://img.shields.io/badge/LangChain-1C3C3C?style=flat-square&logo=langchain&logoColor=white) | Tools, retrieval, memory |
+| ![LangGraph](https://img.shields.io/badge/LangGraph-FF6B35?style=flat-square&logoColor=white) | Agent orchestration |
+| ![ChromaDB](https://img.shields.io/badge/ChromaDB-FF4081?style=flat-square&logoColor=white) | Vector store |
+| ![OpenAI](https://img.shields.io/badge/OpenAI-412991?style=flat-square&logo=openai&logoColor=white) | Generation + embeddings |
+| ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-336791?style=flat-square&logo=postgresql&logoColor=white) | Persistence layer |
+| ![Docker](https://img.shields.io/badge/Docker-2496ED?style=flat-square&logo=docker&logoColor=white) | Containerization |
+| ![uv](https://img.shields.io/badge/uv-DE5FE9?style=flat-square&logoColor=white) | Dependency management |
+
+</div>
+
+---
+
+## 💻 Local Development
+
+### 🔧 Backend
 
 ```bash
-cd /Users/h/Turing/Capestone/nutribot1/backend
+cd backend
 uv sync
 uv run uvicorn main:app --reload
 ```
 
-Backend API docs:
+📖 Interactive API docs → [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
 
-- [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
+### 🖥️ Frontend
 
-### 2. Frontend
-
-Open the frontend directly:
-
-- [frontend/index.html](/Users/h/Turing/Capestone/nutribot1/frontend/index.html)
-
-Or serve it locally:
+Open [`frontend/index.html`](frontend/index.html) directly, or serve locally:
 
 ```bash
-cd /Users/h/Turing/Capestone/nutribot1/frontend
+cd frontend
 python3 -m http.server 3000
 ```
 
-Local frontend URL:
+🌐 Local URL → [http://127.0.0.1:3000](http://127.0.0.1:3000)
 
-- [http://127.0.0.1:3000](http://127.0.0.1:3000)
+---
 
-## Environment Variables
+## 🔐 Environment Variables
 
-Create a `.env` in `backend/` based on [backend/.env.example](/Users/h/Turing/Capestone/nutribot1/backend/.env.example).
+Create `backend/.env` from [`backend/.env.example`](backend/.env.example).
 
-Required:
+**Required**
 
-```bash
+```env
 OPENAI_API_KEY=sk-proj-...
 DATABASE_URL=postgresql://user:password@host:5432/nutrition_db
 ```
 
-Optional:
+**Optional**
 
-```bash
+```env
 MISTRAL_API_KEY=
 USDA_API_KEY=DEMO_KEY
 SESSION_MAX_HOURS=8
 ```
 
-## Retrieval Ingest
+---
 
-To build or refresh the vector store locally:
+## 📦 Retrieval Ingest
+
+Build or refresh the local vector store:
 
 ```bash
-cd /Users/h/Turing/Capestone/nutribot1/backend
+cd backend
 uv run python rag/ingest.py
 ```
 
-This writes local vector data to `backend/chroma_db`.
+> Vector data is written to `backend/chroma_db/`. Only changed files are re-embedded.
 
-## Testing
+---
 
-Run the backend test suite:
+## 🧪 Testing
 
 ```bash
-cd /Users/h/Turing/Capestone/nutribot1/backend
+cd backend
 uv run pytest tests/ -v
 ```
 
-## Docker
+---
 
-The backend container is defined in [backend/Dockerfile](/Users/h/Turing/Capestone/nutribot1/backend/Dockerfile).
-
-Build and run:
+## 🐳 Docker
 
 ```bash
-cd /Users/h/Turing/Capestone/nutribot1/backend
+cd backend
 docker build -t nutribot-backend .
+
 docker run --rm -p 8000:8000 \
   -e OPENAI_API_KEY=sk-proj-... \
   -e DATABASE_URL=postgresql://user:password@host:5432/nutrition_db \
   nutribot-backend
 ```
 
-Optional startup ingest:
+To trigger RAG ingest on startup, add `-e RUN_RAG_INGEST=1`.
 
-```bash
-docker run --rm -p 8000:8000 \
-  -e OPENAI_API_KEY=sk-proj-... \
-  -e DATABASE_URL=postgresql://user:password@host:5432/nutrition_db \
-  -e RUN_RAG_INGEST=1 \
-  nutribot-backend
-```
+---
 
-## Deployment
+## ☁️ Deployment
 
-Current deployment targets and public URLs:
+### Infrastructure Overview
 
-- **Frontend:** Cloudflare Workers  
-  [https://cloudflare-workers-autoconfig-nutribot-ai.h-elmashaly.workers.dev](https://cloudflare-workers-autoconfig-nutribot-ai.h-elmashaly.workers.dev)
-- **Backend:** Hugging Face Spaces  
-  Space repo: [https://huggingface.co/spaces/ElHoda-mashaly/nutribot-backend](https://huggingface.co/spaces/ElHoda-mashaly/nutribot-backend)  
-  Public backend domain: [https://elhoda-mashaly-nutribot-backend.hf.space](https://elhoda-mashaly-nutribot-backend.hf.space)
-- **Database:** Supabase Postgres
+| 🏗️ Platform | ⚙️ What Runs There | 📝 Notes |
+|:---|:---|:---|
+| **Cloudflare Workers** | Static frontend from `frontend/` | Public browser entry point |
+| **Hugging Face Spaces** | Dockerized FastAPI backend | REST API + Swagger at `/docs` |
+| **Supabase** | Managed PostgreSQL | Users, profiles, sessions, memories, audit logs |
 
-### Hosted Services Overview
+### 🔧 Backend Deployment
 
-| Platform | What runs there | Notes |
-| --- | --- | --- |
-| `Cloudflare Workers` | Static frontend from `frontend/` | Public browser entry point for the app |
-| `Hugging Face Spaces` | Dockerized FastAPI backend | Serves the REST API and Swagger docs at `/docs` |
-| `Supabase` | Managed PostgreSQL database | Stores users, profiles, sessions, memories, and audit data |
+1. Create a Supabase project and run [`backend/sql/schema.sql`](backend/sql/schema.sql) in the SQL Editor
+2. Copy the Supabase **session pooler** connection string into `DATABASE_URL`
+3. Create a Hugging Face **Docker Space** with the backend files at the repo root
+4. Add Space **secrets** — `DATABASE_URL`, `OPENAI_API_KEY`, `MISTRAL_API_KEY` (if used)
+5. Add Space **variables** — `USDA_API_KEY=DEMO_KEY`, `SESSION_MAX_HOURS=8`, `RUN_RAG_INGEST=1` (optional)
+6. Push to the Space repo — Hugging Face rebuilds and redeploys automatically
+7. Verify at `/api/health` and `/docs`
 
-Useful backend URLs:
+### 🖥️ Frontend Deployment
 
-- Swagger UI API docs: [https://elhoda-mashaly-nutribot-backend.hf.space/docs](https://elhoda-mashaly-nutribot-backend.hf.space/docs)
-- Health check: [https://elhoda-mashaly-nutribot-backend.hf.space/api/health](https://elhoda-mashaly-nutribot-backend.hf.space/api/health)
+1. Update the production API base URL in [`frontend/index.html`](frontend/index.html) to the Hugging Face backend domain
+2. Deploy `frontend/` to Cloudflare Workers / Pages
+3. Smoke-test login, profile save, chat, and memory confirmation against the live backend
 
-### Deploying the backend
+> ⚠️ **Note:** CORS origins are hardcoded in the backend. Hugging Face free Spaces may cold-start after a period of inactivity.
 
-1. Create a Supabase project and run [backend/sql/schema.sql](/Users/h/Turing/Capestone/nutribot1/backend/sql/schema.sql) in the Supabase SQL Editor.
-2. Copy the Supabase **session pooler** connection string into `DATABASE_URL`.
-3. Create a Hugging Face **Docker Space** and keep the backend app files at the Space repo root.
-4. Add Hugging Face Space secrets:
-   - `DATABASE_URL`
-   - `OPENAI_API_KEY`
-   - `MISTRAL_API_KEY` if used
-5. Add Hugging Face Space variables:
-   - `USDA_API_KEY=DEMO_KEY`
-   - `SESSION_MAX_HOURS=8`
-   - `RUN_RAG_INGEST=1` if you want startup ingest
-6. Push changes to the Space repo. Hugging Face automatically rebuilds and redeploys on each push.
-7. Test the deployed backend with `/api/health` and `/docs`.
+---
 
-### Deploying the frontend
+## 📡 API Reference
 
-1. Update the production API base in [frontend/index.html](/Users/h/Turing/Capestone/nutribot1/frontend/index.html) to the Hugging Face backend domain.
-2. Deploy the `frontend/` directory to Cloudflare Workers / Pages.
-3. Re-test login, profile save, chat, and memory confirmation against the deployed backend.
-
-Notes:
-
-- CORS is currently hardcoded in the backend to preserve deployed frontend behavior.
-- Sessions are validated via `POST /api/auth/me` when the frontend restores login state.
-- Hugging Face free Spaces can sleep after inactivity, so the backend may cold-start on the next request.
-
-## API Endpoints
-
-| Method | Endpoint | Purpose |
-| --- | --- | --- |
+| 🔵 Method | 🔗 Endpoint | 📋 Purpose |
+|:---:|:---|:---|
 | `POST` | `/api/auth/register` | Create a user account |
 | `POST` | `/api/auth/login` | Sign in and receive a session token |
 | `POST` | `/api/auth/me` | Validate the current session token |
@@ -283,20 +290,44 @@ Notes:
 | `POST` | `/api/chat` | Send a nutrition question to the agent |
 | `POST` | `/api/memories/get` | Fetch confirmed long-term memories |
 | `POST` | `/api/memories/confirm` | Persist a user-confirmed memory |
-| `POST` | `/api/admin/stats` | Admin-only usage and login stats |
-| `GET` | `/api/health` | Health check endpoint |
+| `POST` | `/api/admin/stats` | Admin-only usage and login statistics |
+| `GET` | `/api/health` | Health check |
 
-## Repository Structure
+---
 
-- [backend](/Users/h/Turing/Capestone/nutribot1/backend): API, auth, sessions, RAG, tools, tests, Docker files
-- [frontend](/Users/h/Turing/Capestone/nutribot1/frontend): static client for local and Cloudflare deployment
-- [backend/knowledgebase](/Users/h/Turing/Capestone/nutribot1/backend/knowledgebase): nutrition source documents
-- [backend/tests](/Users/h/Turing/Capestone/nutribot1/backend/tests): backend unit tests
+## 📁 Repository Structure
 
-## Contributing
+```
+nutribot1/
+├── 🖥️  frontend/                  Static client (local + Cloudflare)
+│   └── index.html
+│
+└── ⚡  backend/
+    ├── main.py                   FastAPI entry point
+    ├── Dockerfile
+    ├── pyproject.toml            uv dependency manifest
+    ├── functions/
+    │   └── agent.py              LangGraph ReAct agent
+    ├── rag/                      ChromaDB + LangChain retriever
+    ├── knowledgebase/            Nutrition source documents
+    ├── sql/
+    │   └── schema.sql            PostgreSQL schema
+    └── tests/                    Backend unit tests
+```
 
-External contributions are welcome.
+---
 
-- Open an issue for bugs, ideas, or discussion
-- Submit a pull request with a focused change
-- Keep changes scoped and include tests where behavior changes
+## 🤝 Contributing
+
+Contributions are welcome and appreciated!
+
+- 🐛 **Bugs & ideas** — open an issue
+- 🔀 **Pull requests** — keep changes focused and include tests where behavior changes
+
+---
+
+<div align="center">
+
+Made with 🥦 and a lot of ☕
+
+</div>
