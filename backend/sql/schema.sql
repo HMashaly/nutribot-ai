@@ -63,6 +63,22 @@ CREATE TABLE IF NOT EXISTS user_profiles (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- ── Supermarket offers (cached weekly discounts) ─────────────────────────────
+-- Populated offline by offers/ingest.py; read by the find_grocery_offers tool.
+CREATE TABLE IF NOT EXISTS supermarket_offers (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    store TEXT NOT NULL,
+    product_name TEXT NOT NULL,
+    normalized_name TEXT NOT NULL,
+    price_eur NUMERIC(10, 2) NULL,
+    unit TEXT NULL,
+    discount_pct NUMERIC(5, 2) NULL,
+    valid_from DATE NULL,
+    valid_to DATE NULL,
+    source TEXT NOT NULL DEFAULT 'seed',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 -- ── Indexes ───────────────────────────────────────────────────────────────────
 CREATE INDEX IF NOT EXISTS idx_users_email             ON users        (email);
 CREATE INDEX IF NOT EXISTS idx_login_audit_user_id     ON login_audit  (user_id);
@@ -71,3 +87,5 @@ CREATE INDEX IF NOT EXISTS idx_login_audit_email_time  ON login_audit  (email_at
 CREATE INDEX IF NOT EXISTS idx_auth_sessions_user_id   ON auth_sessions(user_id);
 CREATE INDEX IF NOT EXISTS idx_auth_sessions_expires_at ON auth_sessions(expires_at DESC);
 CREATE INDEX IF NOT EXISTS idx_user_memories_user_id   ON user_memories(user_id);
+CREATE INDEX IF NOT EXISTS idx_offers_normalized_name  ON supermarket_offers(normalized_name);
+CREATE INDEX IF NOT EXISTS idx_offers_store_valid_to   ON supermarket_offers(store, valid_to);

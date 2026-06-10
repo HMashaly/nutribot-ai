@@ -16,6 +16,20 @@ class Settings(BaseSettings):
     session_max_hours: int = 8
     moderation_model: str = "mistral-moderation-2411"
 
+    # ── Observability ──────────────────────────────────────────────────────────
+    log_level: str = "INFO"
+    log_format: str = "console"  # "console" (human-readable) or "json" (structured)
+
+    # LangSmith tracing — stays off unless explicitly enabled and keyed.
+    langchain_tracing_v2: bool = False
+    langchain_api_key: str = ""
+    langchain_project: str = "nutribot"
+    langchain_endpoint: str = "https://api.smith.langchain.com"
+
+    # ── Abuse protection ───────────────────────────────────────────────────────
+    chat_rate_limit_per_minute: int = 20
+    agent_cache_max: int = 256
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

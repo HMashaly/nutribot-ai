@@ -546,6 +546,89 @@
       cursor: not-allowed;
     }
 
+    #mic-btn {
+      width: 44px;
+      height: 44px;
+      min-width: 44px;
+      border-radius: 50%;
+      border: 1px solid var(--border);
+      background: var(--surface2);
+      color: var(--text);
+      font-size: 1.05rem;
+      font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", system-ui, sans-serif;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      transition: all 0.2s;
+    }
+
+    #mic-btn:hover { border-color: var(--accent); }
+    #mic-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    #mic-btn.listening {
+      background: #7f1d1d;
+      color: #fecaca;
+      border-color: #ef4444;
+      animation: micPulse 1.1s ease-in-out infinite;
+    }
+    @keyframes micPulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.5); }
+      50%      { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
+    }
+
+    #mic-lang {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--text-muted);
+      font-size: 0.7rem;
+      padding: 0 6px;
+      height: 44px;
+      width: 56px;
+      max-width: 56px;
+      min-width: 56px;
+      cursor: pointer;
+      flex-shrink: 0;
+      -webkit-appearance: none;
+      appearance: none;
+      text-align: center;
+      text-align-last: center;
+    }
+
+    /* ── Offer cards ──────────────────────────────────────────────────────────── */
+    .offers-block {
+      margin-top: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      max-width: 520px;
+    }
+    .offers-ingredient {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      text-transform: capitalize;
+    }
+    .offer-cards { display: flex; flex-wrap: wrap; gap: 6px; }
+    .offer-card {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--accent);
+      border-radius: 10px;
+      padding: 6px 10px;
+      font-size: 0.72rem;
+      line-height: 1.35;
+      min-width: 140px;
+    }
+    .offer-card .store { font-weight: 600; color: var(--accent); }
+    .offer-card .price { font-weight: 600; }
+    .offer-card .disc {
+      color: #fca5a5;
+      font-size: 0.66rem;
+      margin-left: 4px;
+    }
+    .offer-card .meta { color: var(--text-muted); font-size: 0.66rem; }
+
     /* ── Toast ────────────────────────────────────────────────────────────────── */
     #toast {
       position: fixed;
@@ -844,6 +927,11 @@
       <div id="input-area">
         <textarea id="chat-input" rows="1" placeholder="Ask me anything about nutrition…" onkeydown="handleKey(event)"
           oninput="autoResize(this)"></textarea>
+        <select id="mic-lang" title="Speech language">
+          <option value="en-US">EN</option>
+          <option value="de-DE">DE</option>
+        </select>
+        <button id="mic-btn" onclick="toggleDictation()" title="Speak your question">🎤</button>
         <button id="send-btn" onclick="sendMessage()">➤</button>
       </div>
     </div>
@@ -1076,6 +1164,53 @@
       el.style.height = Math.min(el.scrollHeight, 140) + 'px';
     }
 
+    // ── Speech-to-text (Web Speech API) ───────────────────────────────────────────
+    const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+    let _recognizer = null;
+    let _listening = false;
+
+    function toggleDictation() {
+      const btn = document.getElementById('mic-btn');
+      if (!SpeechRec) {
+        toast('Speech input is not supported in this browser. Try Chrome or Edge.', 'error');
+        return;
+      }
+      if (_listening) { _recognizer && _recognizer.stop(); return; }
+
+      const input = document.getElementById('chat-input');
+      const baseText = input.value ? input.value.trim() + ' ' : '';
+
+      _recognizer = new SpeechRec();
+      _recognizer.lang = document.getElementById('mic-lang').value;
+      _recognizer.interimResults = true;
+      _recognizer.continuous = false;
+
+      _recognizer.onstart = () => { _listening = true; btn.classList.add('listening'); };
+      _recognizer.onerror = (e) => {
+        if (e.error !== 'aborted' && e.error !== 'no-speech') toast(`Mic error: ${e.error}`, 'error');
+      };
+      _recognizer.onend = () => { _listening = false; btn.classList.remove('listening'); _recognizer = null; };
+      _recognizer.onresult = (event) => {
+        let transcript = '';
+        for (let i = 0; i < event.results.length; i++) transcript += event.results[i][0].transcript;
+        input.value = baseText + transcript;
+        autoResize(input);
+      };
+
+      try { _recognizer.start(); }
+      catch (_) { /* start() throws if already running — ignore */ }
+    }
+
+    // Disable the mic button up front if the browser can't do speech recognition.
+    if (!SpeechRec) {
+      window.addEventListener('DOMContentLoaded', () => {
+        const btn = document.getElementById('mic-btn');
+        const lang = document.getElementById('mic-lang');
+        if (btn) { btn.disabled = true; btn.title = 'Speech input not supported in this browser'; }
+        if (lang) lang.style.display = 'none';
+      });
+    }
+
     async function sendMessage() {
       if (state.isTyping) return;
       const input = document.getElementById('chat-input');
@@ -1117,6 +1252,7 @@
         tools_used: data.tools_used || [],
         sources: data.sources || [],
         pending_memories: data.pending_memories || [],
+        offers: data.offers || [],
         ts: new Date().toLocaleTimeString(),
       };
       state.messages.push(botMsg);
@@ -1185,10 +1321,61 @@
         });
       }
 
+      // Supermarket offer cards
+      if (msg.offers?.length) {
+        const block = buildOffersBlock(msg.offers);
+        if (block) right.appendChild(block);
+      }
+
       row.appendChild(avatar);
       row.appendChild(right);
       container.appendChild(row);
       container.scrollTop = container.scrollHeight;
+    }
+
+    function buildOffersBlock(offers) {
+      // offers: [{ ingredient, offers: [{ store, product_name, price_eur, unit, discount_pct, valid_to }] }]
+      const withHits = offers.filter(o => o.offers?.length);
+      if (!withHits.length) return null;
+
+      const block = document.createElement('div');
+      block.className = 'offers-block';
+
+      const header = document.createElement('div');
+      header.className = 'offers-ingredient';
+      header.textContent = '🛒 On offer near you';
+      block.appendChild(header);
+
+      withHits.forEach(entry => {
+        const label = document.createElement('div');
+        label.className = 'offers-ingredient';
+        label.textContent = entry.ingredient;
+        block.appendChild(label);
+
+        const cards = document.createElement('div');
+        cards.className = 'offer-cards';
+        entry.offers.forEach(o => {
+          const card = document.createElement('div');
+          card.className = 'offer-card';
+          const price = (o.price_eur != null) ? `€${Number(o.price_eur).toFixed(2)}` : 'n/a';
+          const disc = o.discount_pct ? `<span class="disc">−${Math.round(Number(o.discount_pct))}%</span>` : '';
+          const unit = o.unit ? ` / ${o.unit}` : '';
+          const until = o.valid_to ? `until ${o.valid_to}` : '';
+          card.innerHTML =
+            `<div class="store">${escapeHtml(o.store)}</div>` +
+            `<div>${escapeHtml(o.product_name)}</div>` +
+            `<div><span class="price">${price}</span><span class="meta">${escapeHtml(unit)}</span>${disc}</div>` +
+            (until ? `<div class="meta">${escapeHtml(until)}</div>` : '');
+          cards.appendChild(card);
+        });
+        block.appendChild(cards);
+      });
+      return block;
+    }
+
+    function escapeHtml(s) {
+      return String(s ?? '').replace(/[&<>"']/g, c =>
+        ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
     }
 
     function buildHITLCard(fact) {
@@ -1268,9 +1455,17 @@
     async function api(path, body, options = {}) {
       const { silent = false } = options;
       try {
+        // Auth travels in the Authorization header, never the body. Accept a
+        // token passed in the body (e.g. session restore before state is set)
+        // or fall back to the active session token.
+        body = { ...(body || {}) };
+        const token = body.token || state.token;
+        delete body.token;
+        const headers = { 'Content-Type': 'application/json' };
+        if (token) headers['Authorization'] = `Bearer ${token}`;
         const res = await fetch(`${API_BASE}${path}`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers,
           body: JSON.stringify(body),
         });
         if (res.ok) return await res.json();

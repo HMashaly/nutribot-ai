@@ -2,24 +2,34 @@
 NutriBot — AI Nutrition Coach
 FastAPI Backend: main.py
 
-Replaces Streamlit app.py with a proper REST API.
-
 Run:
     uvicorn main:app --reload --port 8000
+
+Auth: protected endpoints expect the session token as a bearer credential —
+`Authorization: Bearer <token>` — surfaced via the `get_current_session`
+dependency (and the Authorize button in /docs).
 """
 
 from __future__ import annotations
 
-from datetime import datetime
+from collections import OrderedDict
+from contextlib import asynccontextmanager
+from datetime import datetime, timezone
 from typing import Any
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from loguru import logger
 from pydantic import BaseModel
 
 from auth import authenticate_user, create_user, get_admin_dashboard_stats
+from config import settings
 from db import (
+    has_fresh_offers,
     init_database,
+    get_connection,
     get_memories,
     save_memory,
     load_user_profile,
@@ -27,17 +37,55 @@ from db import (
 )
 from functions.agent import create_nutribot_agent
 from moderation import check_message
-from token_counting import count_tokens, estimate_cost, run_agent_tracked
+from offers.matcher import match_offers
+from observability import (
+    RequestContextMiddleware,
+    configure_langsmith,
+    configure_logging,
+    current_request_id,
+)
+from rate_limit import SlidingWindowRateLimiter
+from token_counting import run_agent_tracked
 from session_manager import SessionManager
+
+API_VERSION = "2.0.0"
+
+
+# ── Lifespan ───────────────────────────────────────────────────────────────────
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    configure_logging()
+    configure_langsmith()
+    logger.info("Starting NutriBot API v{}", API_VERSION)
+    init_database()
+    logger.info("Database initialised; API ready")
+
+    try:
+        if not has_fresh_offers():
+            logger.info("Offers cache empty/stale — running offers ingest")
+            from offers.ingest import ingest as ingest_offers
+
+            ingest_offers()
+    except Exception:
+        logger.exception("Offers ingest at startup failed (continuing without it)")
+
+    yield
+    logger.info("Shutting down NutriBot API")
+
 
 # ── App setup ──────────────────────────────────────────────────────────────────
 
 app = FastAPI(
     title="NutriBot API",
     description="AI Nutrition Coach — LangChain Agent + RAG + OpenAI",
-    version="2.0.0",
+    version=API_VERSION,
+    lifespan=lifespan,
 )
 
+# Inner middleware first (request correlation), CORS outermost so its headers
+# are applied even on early failures.
+app.add_middleware(RequestContextMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -51,10 +99,16 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["Content-Type", "Authorization"],
+    expose_headers=["X-Request-ID"],
 )
 
+bearer_scheme = HTTPBearer(auto_error=False, description="Session token from /api/auth/login")
+
 session_manager = SessionManager()
-_agent_cache: dict[str, Any] = {}
+chat_rate_limiter = SlidingWindowRateLimiter(settings.chat_rate_limit_per_minute)
+
+# Bounded LRU of per-(model, user) agents — caps memory in a long-running process.
+_agent_cache: "OrderedDict[str, Any]" = OrderedDict()
 
 PROFILE_DEFAULTS: dict = {
     "weight_kg":            70.0,
@@ -65,6 +119,7 @@ PROFILE_DEFAULTS: dict = {
     "goal":                 "maintenance",
     "dietary_restrictions": "",
 }
+
 
 # ── Pydantic schemas ───────────────────────────────────────────────────────────
 
@@ -77,7 +132,6 @@ class LoginRequest(BaseModel):
     password: str
 
 class ProfileRequest(BaseModel):
-    token: str
     weight_kg: float | None = None
     height_cm: float | None = None
     age: int | None = None
@@ -87,27 +141,40 @@ class ProfileRequest(BaseModel):
     dietary_restrictions: str | None = None
 
 class ChatRequest(BaseModel):
-    token: str
     message: str
     model: str = "gpt-4o-mini"
     temperature: float = 0.0
     chat_history: list[dict] = []
 
 class MemoryConfirmRequest(BaseModel):
-    token: str
     memory: str
 
-class TokenOnlyRequest(BaseModel):
-    token: str
+class OffersRequest(BaseModel):
+    ingredients: list[str]
 
-# ── Internal helpers ───────────────────────────────────────────────────────────
 
-def _require_session(token: str) -> dict:
-    session = session_manager.get(token)
+# ── Auth dependencies ──────────────────────────────────────────────────────────
+
+def get_current_session(
+    credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
+) -> dict:
+    """Resolve the bearer token to a live session, or 401."""
+    if credentials is None or not credentials.credentials:
+        raise HTTPException(status_code=401, detail="Missing authentication token.")
+    session = session_manager.get(credentials.credentials)
     if not session:
         raise HTTPException(status_code=401, detail="Invalid or expired session.")
     return session
 
+
+def require_admin(session: dict = Depends(get_current_session)) -> dict:
+    """Session dependency that additionally enforces the admin role."""
+    if session.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required.")
+    return session
+
+
+# ── Internal helpers ───────────────────────────────────────────────────────────
 
 def _format_dietary_profile(profile: dict) -> str:
     restrictions = profile.get("dietary_restrictions") or ""
@@ -124,25 +191,36 @@ def _format_dietary_profile(profile: dict) -> str:
 
 def _get_agent(model_name: str, user_id: str):
     cache_key = f"{model_name}:{user_id}"
-    if cache_key not in _agent_cache:
-        _agent_cache[cache_key] = create_nutribot_agent(
-            model_name=model_name,
-            user_id=user_id,
-        )
-    return _agent_cache[cache_key]
+    agent = _agent_cache.get(cache_key)
+    if agent is not None:
+        _agent_cache.move_to_end(cache_key)
+        return agent
+
+    agent = create_nutribot_agent(model_name=model_name, user_id=user_id)
+    _agent_cache[cache_key] = agent
+    while len(_agent_cache) > settings.agent_cache_max:
+        evicted, _ = _agent_cache.popitem(last=False)
+        logger.debug("Evicted agent from cache: {}", evicted)
+    return agent
 
 
-# ── Startup ────────────────────────────────────────────────────────────────────
+# ── Global error handling ──────────────────────────────────────────────────────
 
-@app.on_event("startup")
-async def startup():
-    init_database()
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception):
+    """Log the full error server-side; return a generic envelope with the
+    request ID so a user can quote it without us leaking internals."""
+    logger.exception("Unhandled error on {} {}", request.method, request.url.path)
+    return JSONResponse(
+        status_code=500,
+        content={"detail": {"error": "Internal server error.", "request_id": current_request_id()}},
+    )
 
 
 # ── Auth ───────────────────────────────────────────────────────────────────────
 
 @app.post("/api/auth/register")
-async def register(req: RegisterRequest, request: Request):
+async def register(req: RegisterRequest):
     result = create_user(req.email, req.password)
     if not result.ok:
         raise HTTPException(status_code=result.status_code, detail=result.message)
@@ -164,6 +242,7 @@ async def login(req: LoginRequest, request: Request):
         ip_address=ip,
         user_agent=user_agent,
     )
+    logger.info("Login succeeded for user {}", user["id"])
     return {
         "token": token,
         "user_id": str(user["id"]),
@@ -173,8 +252,7 @@ async def login(req: LoginRequest, request: Request):
 
 
 @app.post("/api/auth/me")
-async def who_am_i(req: TokenOnlyRequest):
-    session = _require_session(req.token)
+async def who_am_i(session: dict = Depends(get_current_session)):
     return {
         "user_id": session["user_id"],
         "email": session["email"],
@@ -184,25 +262,24 @@ async def who_am_i(req: TokenOnlyRequest):
 
 
 @app.post("/api/auth/logout")
-async def logout(req: TokenOnlyRequest):
-    session_manager.delete(req.token)
+async def logout(credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme)):
+    if credentials and credentials.credentials:
+        session_manager.delete(credentials.credentials)
     return {"message": "Signed out."}
 
 
 # ── Profile ────────────────────────────────────────────────────────────────────
 
 @app.post("/api/profile/get")
-async def get_profile(req: TokenOnlyRequest):
-    session = _require_session(req.token)
+async def get_profile(session: dict = Depends(get_current_session)):
     db_profile = load_user_profile(session["user_id"])
     merged = {**PROFILE_DEFAULTS, **{k: v for k, v in db_profile.items() if v is not None}}
     return {"profile": merged}
 
 
 @app.post("/api/profile/save")
-async def save_profile(req: ProfileRequest):
-    session = _require_session(req.token)
-    updates = req.model_dump(exclude={"token"}, exclude_none=True)
+async def save_profile(req: ProfileRequest, session: dict = Depends(get_current_session)):
+    updates = req.model_dump(exclude_none=True)
     db_profile = load_user_profile(session["user_id"])
     merged = {**PROFILE_DEFAULTS, **{k: v for k, v in db_profile.items() if v is not None}, **updates}
     save_user_profile(session["user_id"], merged)
@@ -212,9 +289,17 @@ async def save_profile(req: ProfileRequest):
 # ── Chat ───────────────────────────────────────────────────────────────────────
 
 @app.post("/api/chat")
-async def chat(req: ChatRequest):
-    session = _require_session(req.token)
+async def chat(req: ChatRequest, session: dict = Depends(get_current_session)):
     user_id = session["user_id"]
+
+    allowed, retry_after = chat_rate_limiter.allow(user_id)
+    if not allowed:
+        logger.warning("Chat rate limit hit for user {}", user_id)
+        raise HTTPException(
+            status_code=429,
+            detail=f"Too many requests. Try again in {retry_after} seconds.",
+            headers={"Retry-After": str(retry_after)},
+        )
 
     blocked, reason = check_message(req.message)
     if blocked:
@@ -239,72 +324,102 @@ async def chat(req: ChatRequest):
         ],
     }
 
+    # Tag the LangSmith trace with the request's correlation ID, user, and model.
+    trace_config = {
+        "run_name": "nutribot_chat",
+        "tags": ["chat", req.model],
+        "metadata": {"user_id": user_id, "request_id": current_request_id()},
+    }
+
     try:
-        result, usage = run_agent_tracked(agent, payload, req.model)
-        response_text = result.get("output", "Sorry, I couldn't generate a response.")
-        intermediate = result.get("intermediate_steps", [])
-
-        tools_used = []
-        sources = []
-        pending_memories = []
-
-        for step in intermediate:
-            action, observation = step
-            tool_name = getattr(action, "tool", "unknown")
-            tool_input = getattr(action, "tool_input", {})
-            obs_str = str(observation)
-
-            tools_used.append({
-                "name": tool_name,
-                "input": str(tool_input),
-                "output": obs_str[:300],
-            })
-
-            if tool_name == "search_nutrition_knowledge":
-                for chunk in obs_str.split("\n\n"):
-                    if chunk.strip():
-                        sources.append({"source": "knowledge_base", "content": chunk[:200]})
-
-            if tool_name == "remember_fact":
-                fact = str(tool_input.get("fact", "")).strip()
-                if fact and fact not in pending_memories:
-                    pending_memories.append(fact)
-
-        return {
-            "response": response_text,
-            "tools_used": tools_used,
-            "sources": sources,
-            "pending_memories": pending_memories,
-            "usage": {
-                "total_tokens": usage.total_tokens,
-                "estimated_cost_usd": round(usage.estimated_cost_usd, 6),
-            },
-        }
-
-    except Exception as exc:
-        fallback_tok = count_tokens(req.message, req.model)
+        result, usage = run_agent_tracked(agent, payload, req.model, config=trace_config)
+    except Exception:
+        logger.exception("Agent run failed for user {}", user_id)
         raise HTTPException(
             status_code=500,
             detail={
-                "error": str(exc),
-                "usage": {"total_tokens": fallback_tok},
+                "error": "The assistant failed to generate a response.",
+                "request_id": current_request_id(),
             },
         )
+
+    response_text = result.get("output", "Sorry, I couldn't generate a response.")
+    intermediate = result.get("intermediate_steps", [])
+
+    tools_used = []
+    sources = []
+    pending_memories = []
+    offers = []
+
+    for step in intermediate:
+        action, observation = step
+        tool_name = getattr(action, "tool", "unknown")
+        tool_input = getattr(action, "tool_input", {})
+        obs_str = str(observation)
+
+        tools_used.append({
+            "name": tool_name,
+            "input": str(tool_input),
+            "output": obs_str[:300],
+        })
+
+        if tool_name == "search_nutrition_knowledge":
+            for chunk in obs_str.split("\n\n"):
+                if chunk.strip():
+                    sources.append({"source": "knowledge_base", "content": chunk[:200]})
+
+        if tool_name == "remember_fact":
+            fact = str(tool_input.get("fact", "")).strip()
+            if fact and fact not in pending_memories:
+                pending_memories.append(fact)
+
+        if tool_name == "find_grocery_offers":
+            # Re-run the match to attach structured offers for UI cards.
+            raw = str(tool_input.get("ingredients", ""))
+            items = [p.strip() for p in raw.split(",") if p.strip()]
+            if items:
+                try:
+                    offers.extend(match_offers(items))
+                except Exception:
+                    logger.exception("Offer enrichment failed for user {}", user_id)
+
+    logger.info(
+        "Chat handled for user {} — {} tool call(s), {} tokens",
+        user_id, len(tools_used), usage.total_tokens,
+    )
+    return {
+        "response": response_text,
+        "tools_used": tools_used,
+        "sources": sources,
+        "pending_memories": pending_memories,
+        "offers": offers,
+        "usage": {
+            "total_tokens": usage.total_tokens,
+            "estimated_cost_usd": round(usage.estimated_cost_usd, 6),
+        },
+    }
+
+
+# ── Supermarket offers ─────────────────────────────────────────────────────────
+
+@app.post("/api/offers")
+async def grocery_offers(req: OffersRequest, session: dict = Depends(get_current_session)):
+    """Find current German supermarket offers for a list of recipe ingredients."""
+    matches = match_offers(req.ingredients)
+    return {"offers": matches}
 
 
 # ── Memory (HITL) ──────────────────────────────────────────────────────────────
 
 @app.post("/api/memories/get")
-async def get_memories_endpoint(req: TokenOnlyRequest):
-    session = _require_session(req.token)
+async def get_memories_endpoint(session: dict = Depends(get_current_session)):
     memories = get_memories(session["user_id"])
     return {"memories": memories}
 
 
 @app.post("/api/memories/confirm")
-async def confirm_memory(req: MemoryConfirmRequest):
+async def confirm_memory(req: MemoryConfirmRequest, session: dict = Depends(get_current_session)):
     """Human-in-the-loop: user confirms a fact to persist long-term."""
-    session = _require_session(req.token)
     save_memory(session["user_id"], req.memory)
     return {"message": "Memory saved.", "memory": req.memory}
 
@@ -312,10 +427,7 @@ async def confirm_memory(req: MemoryConfirmRequest):
 # ── Admin ──────────────────────────────────────────────────────────────────────
 
 @app.post("/api/admin/stats")
-async def admin_stats(req: TokenOnlyRequest):
-    session = _require_session(req.token)
-    if session.get("role") != "admin":
-        raise HTTPException(status_code=403, detail="Admin access required.")
+async def admin_stats(session: dict = Depends(require_admin)):
     stats = get_admin_dashboard_stats()
     stats["recent_logins"] = [dict(r) for r in stats["recent_logins"]]
     return stats
@@ -325,4 +437,23 @@ async def admin_stats(req: TokenOnlyRequest):
 
 @app.get("/api/health")
 async def health():
-    return {"status": "ok", "version": "2.0.0", "timestamp": datetime.utcnow().isoformat()}
+    """Readiness check — verifies the database is reachable."""
+    db_ok = True
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT 1")
+                cur.fetchone()
+    except Exception:
+        logger.exception("Health check: database unreachable")
+        db_ok = False
+
+    body = {
+        "status": "ok" if db_ok else "degraded",
+        "version": API_VERSION,
+        "database": "up" if db_ok else "down",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
+    if not db_ok:
+        return JSONResponse(status_code=503, content=body)
+    return body

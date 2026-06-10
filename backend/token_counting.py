@@ -40,12 +40,21 @@ class TokenUsage:
     is_exact: bool            = False
 
 
-def run_agent_tracked(agent_executor, payload: dict, model: str) -> tuple[dict, TokenUsage]:
-    """Invoke agent and capture real token usage via LangChain OpenAI callback."""
+def run_agent_tracked(
+    agent_executor,
+    payload: dict,
+    model: str,
+    config: dict | None = None,
+) -> tuple[dict, TokenUsage]:
+    """Invoke agent and capture real token usage via LangChain OpenAI callback.
+
+    `config` is forwarded to the agent (run name / tags / metadata) so traces in
+    LangSmith carry the request's correlation ID, user, and model.
+    """
     from langchain_community.callbacks.manager import get_openai_callback
 
     with get_openai_callback() as cb:
-        result = agent_executor.invoke(payload)
+        result = agent_executor.invoke(payload, config=config)
 
     input_tok  = cb.prompt_tokens
     output_tok = cb.completion_tokens

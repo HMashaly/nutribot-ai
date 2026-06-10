@@ -202,7 +202,7 @@ def test_auth_me_returns_user_for_valid_session(monkeypatch):
     )
 
     with TestClient(main.app) as client:
-        response = client.post("/api/auth/me", json={"token": "valid-token"})
+        response = client.post("/api/auth/me", headers={"Authorization": "Bearer valid-token"})
 
     assert response.status_code == 200
     assert response.json()["email"] == "user@example.com"
@@ -213,7 +213,7 @@ def test_auth_me_rejects_expired_session(monkeypatch):
     monkeypatch.setattr(main, "session_manager", StubSessionManager(None))
 
     with TestClient(main.app) as client:
-        response = client.post("/api/auth/me", json={"token": "expired-token"})
+        response = client.post("/api/auth/me", headers={"Authorization": "Bearer expired-token"})
 
     assert response.status_code == 401
 
@@ -223,7 +223,7 @@ def test_auth_me_rejects_revoked_session(monkeypatch):
     monkeypatch.setattr(main, "session_manager", StubSessionManager(None))
 
     with TestClient(main.app) as client:
-        response = client.post("/api/auth/me", json={"token": "revoked-token"})
+        response = client.post("/api/auth/me", headers={"Authorization": "Bearer revoked-token"})
 
     assert response.status_code == 401
 
@@ -233,7 +233,7 @@ def test_auth_me_rejects_unknown_session(monkeypatch):
     monkeypatch.setattr(main, "session_manager", StubSessionManager(None))
 
     with TestClient(main.app) as client:
-        response = client.post("/api/auth/me", json={"token": "unknown-token"})
+        response = client.post("/api/auth/me", headers={"Authorization": "Bearer unknown-token"})
 
     assert response.status_code == 401
 
@@ -258,7 +258,7 @@ def test_chat_returns_pending_memory_for_remember_fact_tool(monkeypatch):
     monkeypatch.setattr(
         main,
         "run_agent_tracked",
-        lambda agent_executor, payload, model: (
+        lambda agent_executor, payload, model, config=None: (
             {
                 "output": "I'll remember that preference.",
                 "intermediate_steps": [
@@ -278,8 +278,8 @@ def test_chat_returns_pending_memory_for_remember_fact_tool(monkeypatch):
     with TestClient(main.app) as client:
         response = client.post(
             "/api/chat",
+            headers={"Authorization": "Bearer valid-token"},
             json={
-                "token": "valid-token",
                 "message": "I prefer grilled fish over red meat.",
                 "model": "gpt-4o-mini",
                 "chat_history": [],

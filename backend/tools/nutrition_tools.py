@@ -199,6 +199,15 @@ def check_dietary_compatibility(food_item: str, dietary_restrictions: str) -> st
             ],
             "label": "Halal",
         },
+        "kosher": {
+            "avoid": [
+                "pork", "pig", "ham", "bacon", "lard",
+                "shellfish", "shrimp", "crab", "lobster", "oyster", "clam",
+                "rabbit", "catfish", "eel",
+                "gelatin",
+            ],
+            "label": "Kosher",
+        },
         "gluten-free": {
             "avoid": [
                 "wheat", "flour", "bread", "pasta", "barley", "rye", "spelt",
@@ -303,3 +312,27 @@ def search_usda_food(food_name: str) -> str:
         f"Carbs:    {nutrients.get('Carbohydrate, by difference', 'N/A')} g\n"
         f"Fat:      {nutrients.get('Total lipid (fat)', 'N/A')} g"
     )
+
+
+@tool
+def find_grocery_offers(ingredients: str) -> str:
+    """
+    Find current German supermarket offers (Aldi, Lidl, Rewe, Norma, Netto) for a
+    list of recipe ingredients, so the user can see where a meal is cheapest to buy.
+    Use this when the user asks what a meal/recipe costs, where ingredients are on
+    sale, or how to shop for a dish affordably. First break the meal into its
+    core ingredients, then pass them here.
+    Parameters:
+      - ingredients: comma-separated ingredient names, e.g. "eggs, milk, butter, onions"
+    """
+    items = [part.strip() for part in (ingredients or "").split(",") if part.strip()]
+    if not items:
+        return "Please provide one or more ingredients to look up (comma-separated)."
+
+    from offers.matcher import format_offers_text, match_offers
+
+    try:
+        matches = match_offers(items)
+    except Exception as exc:
+        return f"Grocery offer lookup failed: {exc}"
+    return format_offers_text(matches)

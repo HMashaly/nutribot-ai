@@ -25,6 +25,7 @@ from tools.nutrition_tools import (
     calculate_daily_calories,
     calculate_macros,
     check_dietary_compatibility,
+    find_grocery_offers,
     remember_fact,
     search_usda_food,
 )
@@ -48,6 +49,7 @@ Tool usage guide:
 - calculate_macros: use for macro breakdowns (protein/carbs/fat targets).
 - check_dietary_compatibility: use for "can I eat X with my restrictions?" questions.
 - search_usda_food: use for specific food nutritional lookup (calories per 100g, protein, etc).
+- find_grocery_offers: use when the user asks what a meal/recipe costs, where to buy it cheaply, or which German supermarket has the ingredients on offer. Break the dish into core ingredients first, then pass them comma-separated.
 - remember_fact: use when the user shares a durable preference, allergy, goal, or personal fact worth saving.
 
 Be practical, specific, and personalised. Always cite tool results when used. For medical conditions, recommend consulting a qualified dietitian or doctor.
@@ -139,7 +141,11 @@ class NutriBotGraphAgent:
     graph: Any
     user_id: str | None
 
-    def invoke(self, payload: dict[str, Any]) -> dict[str, Any]:
+    def invoke(
+        self,
+        payload: dict[str, Any],
+        config: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         system_prompt = _build_system_prompt(
             user_id=self.user_id,
             dietary_profile=str(payload.get("dietary_profile", "")),
@@ -150,7 +156,7 @@ class NutriBotGraphAgent:
             HumanMessage(content=str(payload.get("input", ""))),
         ]
 
-        result = self.graph.invoke({"messages": messages})
+        result = self.graph.invoke({"messages": messages}, config=config)
         result_messages = result.get("messages", [])
         final_ai_message = next(
             (
@@ -177,6 +183,7 @@ def create_nutribot_agent(model_name: str, user_id: str | None = None):
         calculate_daily_calories,
         calculate_macros,
         check_dietary_compatibility,
+        find_grocery_offers,
         remember_fact,
         search_usda_food,
     ]

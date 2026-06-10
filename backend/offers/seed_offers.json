@@ -1,0 +1,65 @@
+[
+  {"store": "Aldi Süd", "product_name": "Frische Eier Größe M, 10er", "normalized_name": "eier eggs", "price_eur": 1.89, "unit": "10 pack", "discount_pct": 15},
+  {"store": "Lidl", "product_name": "Bio Freiland-Eier, 6er", "normalized_name": "eier eggs bio", "price_eur": 1.49, "unit": "6 pack", "discount_pct": 10},
+  {"store": "Rewe", "product_name": "Freilandeier Größe L, 10er", "normalized_name": "eier eggs", "price_eur": 2.19, "unit": "10 pack", "discount_pct": null},
+  {"store": "Netto", "product_name": "Eier Bodenhaltung, 10er", "normalized_name": "eier eggs", "price_eur": 1.79, "unit": "10 pack", "discount_pct": 20},
+
+  {"store": "Aldi Süd", "product_name": "Frische Vollmilch 3,5%, 1L", "normalized_name": "milch milk vollmilch", "price_eur": 0.95, "unit": "1 L", "discount_pct": null},
+  {"store": "Lidl", "product_name": "Milbona Milch 3,5%, 1L", "normalized_name": "milch milk", "price_eur": 0.89, "unit": "1 L", "discount_pct": 8},
+  {"store": "Norma", "product_name": "Vollmilch 3,5%, 1L", "normalized_name": "milch milk vollmilch", "price_eur": 0.99, "unit": "1 L", "discount_pct": null},
+  {"store": "Rewe", "product_name": "Bio Frische Milch 1L", "normalized_name": "milch milk bio", "price_eur": 1.29, "unit": "1 L", "discount_pct": null},
+
+  {"store": "Aldi Süd", "product_name": "Deutsche Markenbutter 250g", "normalized_name": "butter", "price_eur": 1.59, "unit": "250 g", "discount_pct": 19},
+  {"store": "Lidl", "product_name": "Milbona Butter 250g", "normalized_name": "butter", "price_eur": 1.49, "unit": "250 g", "discount_pct": 21},
+  {"store": "Netto", "product_name": "Markenbutter 250g", "normalized_name": "butter", "price_eur": 1.69, "unit": "250 g", "discount_pct": null},
+  {"store": "Rewe", "product_name": "Deutsche Markenbutter 250g", "normalized_name": "butter", "price_eur": 1.79, "unit": "250 g", "discount_pct": null},
+
+  {"store": "Aldi Süd", "product_name": "Weizenmehl Type 405, 1kg", "normalized_name": "mehl flour weizenmehl", "price_eur": 0.45, "unit": "1 kg", "discount_pct": null},
+  {"store": "Norma", "product_name": "Weizenmehl Type 405, 1kg", "normalized_name": "mehl flour weizenmehl", "price_eur": 0.49, "unit": "1 kg", "discount_pct": null},
+  {"store": "Lidl", "product_name": "Belbake Weizenmehl 1kg", "normalized_name": "mehl flour weizenmehl", "price_eur": 0.45, "unit": "1 kg", "discount_pct": null},
+
+  {"store": "Aldi Süd", "product_name": "Speisezwiebeln 2kg", "normalized_name": "zwiebeln onions", "price_eur": 1.49, "unit": "2 kg", "discount_pct": 12},
+  {"store": "Netto", "product_name": "Speisezwiebeln 1kg", "normalized_name": "zwiebeln onions", "price_eur": 0.89, "unit": "1 kg", "discount_pct": null},
+  {"store": "Rewe", "product_name": "Zwiebeln 1kg", "normalized_name": "zwiebeln onions", "price_eur": 0.99, "unit": "1 kg", "discount_pct": null},
+
+  {"store": "Aldi Süd", "product_name": "Hähnchenbrustfilet 500g", "normalized_name": "haehnchen chicken huhn", "price_eur": 3.99, "unit": "500 g", "discount_pct": 20},
+  {"store": "Lidl", "product_name": "Hähnchenbrustfilet 600g", "normalized_name": "haehnchen chicken huhn", "price_eur": 4.49, "unit": "600 g", "discount_pct": null},
+  {"store": "Netto", "product_name": "Hähnchenschenkel 1kg", "normalized_name": "haehnchen chicken huhn", "price_eur": 2.99, "unit": "1 kg", "discount_pct": 15},
+  {"store": "Rewe", "product_name": "Hähnchenbrustfilet 400g", "normalized_name": "haehnchen chicken huhn", "price_eur": 4.29, "unit": "400 g", "discount_pct": null},
+
+  {"store": "Aldi Süd", "product_name": "Gouda jung am Stück 400g", "normalized_name": "kaese cheese gouda", "price_eur": 2.79, "unit": "400 g", "discount_pct": null},
+  {"store": "Lidl", "product_name": "Gouda Scheiben 400g", "normalized_name": "kaese cheese gouda", "price_eur": 2.69, "unit": "400 g", "discount_pct": 10},
+  {"store": "Norma", "product_name": "Gouda Scheiben 200g", "normalized_name": "kaese cheese gouda", "price_eur": 1.49, "unit": "200 g", "discount_pct": null},
+
+  {"store": "Aldi Süd", "product_name": "Rispentomaten 500g", "normalized_name": "tomaten tomatoes", "price_eur": 0.99, "unit": "500 g", "discount_pct": null},
+  {"store": "Lidl", "product_name": "Cherrytomaten 250g", "normalized_name": "tomaten tomatoes cherry", "price_eur": 0.89, "unit": "250 g", "discount_pct": 18},
+  {"store": "Rewe", "product_name": "Rispentomaten 500g", "normalized_name": "tomaten tomatoes", "price_eur": 1.19, "unit": "500 g", "discount_pct": null},
+
+  {"store": "Aldi Süd", "product_name": "Sonnenblumenöl 1L", "normalized_name": "oel oil sonnenblumenoel", "price_eur": 1.99, "unit": "1 L", "discount_pct": null},
+  {"store": "Norma", "product_name": "Sonnenblumenöl 1L", "normalized_name": "oel oil sonnenblumenoel", "price_eur": 1.89, "unit": "1 L", "discount_pct": 10},
+  {"store": "Lidl", "product_name": "Rapsöl 1L", "normalized_name": "oel oil rapsoel", "price_eur": 1.79, "unit": "1 L", "discount_pct": null},
+
+  {"store": "Aldi Süd", "product_name": "Langkornreis 1kg", "normalized_name": "reis rice", "price_eur": 1.49, "unit": "1 kg", "discount_pct": null},
+  {"store": "Lidl", "product_name": "Basmati Reis 1kg", "normalized_name": "reis rice basmati", "price_eur": 2.29, "unit": "1 kg", "discount_pct": 12},
+  {"store": "Netto", "product_name": "Langkornreis 1kg", "normalized_name": "reis rice", "price_eur": 1.39, "unit": "1 kg", "discount_pct": null},
+
+  {"store": "Aldi Süd", "product_name": "Kartoffeln festkochend 2,5kg", "normalized_name": "kartoffeln potatoes", "price_eur": 1.99, "unit": "2.5 kg", "discount_pct": null},
+  {"store": "Netto", "product_name": "Kartoffeln festkochend 2kg", "normalized_name": "kartoffeln potatoes", "price_eur": 1.79, "unit": "2 kg", "discount_pct": 14},
+  {"store": "Rewe", "product_name": "Kartoffeln vorwiegend festkochend 2kg", "normalized_name": "kartoffeln potatoes", "price_eur": 2.29, "unit": "2 kg", "discount_pct": null},
+
+  {"store": "Aldi Süd", "product_name": "Spaghetti 500g", "normalized_name": "nudeln pasta spaghetti", "price_eur": 0.55, "unit": "500 g", "discount_pct": null},
+  {"store": "Lidl", "product_name": "Penne 500g", "normalized_name": "nudeln pasta penne", "price_eur": 0.59, "unit": "500 g", "discount_pct": null},
+  {"store": "Norma", "product_name": "Spaghetti 500g", "normalized_name": "nudeln pasta spaghetti", "price_eur": 0.49, "unit": "500 g", "discount_pct": 15},
+
+  {"store": "Rewe", "product_name": "Naturjoghurt 3,5%, 500g", "normalized_name": "joghurt yogurt", "price_eur": 0.69, "unit": "500 g", "discount_pct": null},
+  {"store": "Aldi Süd", "product_name": "Naturjoghurt mild 500g", "normalized_name": "joghurt yogurt", "price_eur": 0.59, "unit": "500 g", "discount_pct": null},
+
+  {"store": "Lidl", "product_name": "Schlagsahne 200g", "normalized_name": "sahne cream", "price_eur": 0.49, "unit": "200 g", "discount_pct": null},
+  {"store": "Aldi Süd", "product_name": "Schlagsahne 200g", "normalized_name": "sahne cream", "price_eur": 0.45, "unit": "200 g", "discount_pct": null},
+
+  {"store": "Netto", "product_name": "Paprika rot 500g", "normalized_name": "paprika pepper", "price_eur": 1.29, "unit": "500 g", "discount_pct": 20},
+  {"store": "Rewe", "product_name": "Paprika Mix 500g", "normalized_name": "paprika pepper", "price_eur": 1.99, "unit": "500 g", "discount_pct": null},
+
+  {"store": "Aldi Süd", "product_name": "Knoblauch 3 Stück", "normalized_name": "knoblauch garlic", "price_eur": 0.79, "unit": "3 pcs", "discount_pct": null},
+  {"store": "Lidl", "product_name": "Knoblauch Netz 200g", "normalized_name": "knoblauch garlic", "price_eur": 0.99, "unit": "200 g", "discount_pct": null}
+]

@@ -64,6 +64,78 @@ def save_memory(user_id: str, memory: str) -> None:
         conn.commit()
 
 
+# ── Supermarket offers ─────────────────────────────────────────────────────────
+
+def get_offers_for_terms(terms: list[str]) -> list[dict[str, Any]]:
+    """Return currently-valid offers whose normalized name matches any term.
+
+    Matching is a case-insensitive substring (ILIKE) in either direction, so the
+    ingredient "egg" matches a "free-range eggs" offer and vice versa. Offers
+    whose validity window has already passed are excluded.
+    """
+    if not terms:
+        return []
+
+    clauses = " OR ".join(
+        "(normalized_name ILIKE %s OR %s ILIKE '%%' || normalized_name || '%%')"
+        for _ in terms
+    )
+    params: list[Any] = []
+    for term in terms:
+        params.extend([f"%{term}%", term])
+
+    with get_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                f"""
+                SELECT store, product_name, normalized_name, price_eur, unit,
+                       discount_pct, valid_from, valid_to, source
+                FROM   supermarket_offers
+                WHERE  (valid_to IS NULL OR valid_to >= CURRENT_DATE)
+                  AND  ({clauses})
+                ORDER BY price_eur ASC NULLS LAST
+                """,
+                params,
+            )
+            rows = cur.fetchall()
+    return [dict(row) for row in rows]
+
+
+def has_fresh_offers() -> bool:
+    """True if the offers cache has at least one currently-valid row."""
+    with get_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT 1 FROM supermarket_offers "
+                "WHERE valid_to IS NULL OR valid_to >= CURRENT_DATE LIMIT 1"
+            )
+            return cur.fetchone() is not None
+
+
+def replace_offers(offers: list[dict[str, Any]]) -> int:
+    """Refresh the offers cache: clear the table and insert the given offers.
+
+    Called by offers/ingest.py. Returns the number of rows inserted.
+    """
+    with get_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute("DELETE FROM supermarket_offers")
+            for offer in offers:
+                cur.execute(
+                    """
+                    INSERT INTO supermarket_offers
+                        (store, product_name, normalized_name, price_eur, unit,
+                         discount_pct, valid_from, valid_to, source)
+                    VALUES
+                        (%(store)s, %(product_name)s, %(normalized_name)s, %(price_eur)s,
+                         %(unit)s, %(discount_pct)s, %(valid_from)s, %(valid_to)s, %(source)s)
+                    """,
+                    offer,
+                )
+        conn.commit()
+    return len(offers)
+
+
 # ── Sidebar profile ────────────────────────────────────────────────────────────
 
 def load_user_profile(user_id: str) -> dict[str, Any]:
