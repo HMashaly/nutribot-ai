@@ -99,7 +99,14 @@ python3 -m http.server 3000
 
 ## Environment variables
 
-Copy `backend/.env.example` to `backend/.env`.
+Copy `backend/.env.example` to `backend/.env`:
+
+```bash
+cd backend
+cp .env.example .env
+```
+
+Then fill in the values below.
 
 Required:
 
@@ -128,6 +135,16 @@ LANGCHAIN_TRACING_V2=false
 LANGCHAIN_API_KEY=
 LANGCHAIN_PROJECT=nutribot
 ```
+
+### Getting your API keys
+
+| Key | Required? | Where to get it | Notes |
+|---|---|---|---|
+| `ANTHROPIC_API_KEY` | Yes | [console.anthropic.com/settings/keys](https://console.anthropic.com/settings/keys) — create an account, add billing, then "Create Key" | Used for the agent LLM (`claude-haiku-4-5` / `claude-sonnet-4-6`). Pay-as-you-go, no free tier. Knowledge-base embeddings run locally (HuggingFace `all-MiniLM-L6-v2`) — no embedding API key needed. |
+| `DATABASE_URL` | Yes | Any Postgres instance — e.g. [Supabase](https://supabase.com) (free tier) → Project Settings → Database → Connection string | Or set `POSTGRES_HOST`/`POSTGRES_PORT`/`POSTGRES_DB`/`POSTGRES_USER`/`POSTGRES_PASSWORD` individually instead. |
+| `USDA_API_KEY` | No | [api.data.gov/signup](https://api.data.gov/signup/) — free, instant | The default `DEMO_KEY` works out of the box but is rate-limited (~30 req/hr per IP); a free personal key raises that significantly. |
+| `MISTRAL_API_KEY` | No | [console.mistral.ai](https://console.mistral.ai/) — free tier available | Only needed if you want content moderation (`check_message`). Without it, moderation is skipped. |
+| `LANGCHAIN_API_KEY` | No | [smith.langchain.com](https://smith.langchain.com/) — free tier available | Only needed if `LANGCHAIN_TRACING_V2=true`. Enables LangSmith tracing of agent runs. |
 
 ## Building the vector store
 
