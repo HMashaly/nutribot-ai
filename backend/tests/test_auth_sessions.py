@@ -281,7 +281,7 @@ def test_chat_returns_pending_memory_for_remember_fact_tool(monkeypatch):
             headers={"Authorization": "Bearer valid-token"},
             json={
                 "message": "I prefer grilled fish over red meat.",
-                "model": "gpt-4o-mini",
+                "model": "claude-haiku-4-5",
                 "chat_history": [],
             },
         )

@@ -2,7 +2,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    openai_api_key: str = ""
+    anthropic_api_key: str = ""
     database_url: str = ""
 
     postgres_host: str = "localhost"

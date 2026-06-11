@@ -11,7 +11,7 @@ from typing import List
 from langchain.retrievers.multi_query import MultiQueryRetriever
 from langchain.tools import tool
 from langchain_core.documents import Document
-from langchain_openai import ChatOpenAI
+from langchain_anthropic import ChatAnthropic
 
 from config import settings
 
@@ -27,10 +27,10 @@ def get_rag_tool(vectorstore, base_k: int = 4):
     )
     mqr = MultiQueryRetriever.from_llm(
         retriever=base_retriever,
-        llm=ChatOpenAI(
-            model="gpt-4o-mini",
+        llm=ChatAnthropic(
+            model="claude-haiku-4-5",
             temperature=0,
-            api_key=settings.openai_api_key,
+            api_key=settings.anthropic_api_key,
         ),
     )
 

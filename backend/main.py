@@ -78,7 +78,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="NutriBot API",
-    description="AI Nutrition Coach — LangChain Agent + RAG + OpenAI",
+    description="AI Nutrition Coach — LangChain Agent + RAG + Anthropic Claude",
     version=API_VERSION,
     lifespan=lifespan,
 )
@@ -142,7 +142,7 @@ class ProfileRequest(BaseModel):
 
 class ChatRequest(BaseModel):
     message: str
-    model: str = "gpt-4o-mini"
+    model: str = "claude-haiku-4-5"
     temperature: float = 0.0
     chat_history: list[dict] = []
 

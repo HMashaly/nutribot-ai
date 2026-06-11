@@ -6,25 +6,18 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 COST_PER_1K: dict[str, dict[str, float]] = {
-    "gpt-4o":      {"input": 0.005,   "output": 0.015},
-    "gpt-4o-mini": {"input": 0.00015, "output": 0.0006},
+    "claude-haiku-4-5":  {"input": 0.001, "output": 0.005},
+    "claude-sonnet-4-6": {"input": 0.003, "output": 0.015},
 }
-_FALLBACK_RATES = COST_PER_1K["gpt-4o-mini"]
+_FALLBACK_RATES = COST_PER_1K["claude-haiku-4-5"]
 
 
-def count_tokens(text: str, model: str = "gpt-4o-mini") -> int:
-    try:
-        import tiktoken
-        try:
-            enc = tiktoken.encoding_for_model(model)
-        except KeyError:
-            enc = tiktoken.get_encoding("cl100k_base")
-        return len(enc.encode(text))
-    except Exception:
-        return max(1, len(text) // 4)
+def count_tokens(text: str, model: str = "claude-haiku-4-5") -> int:
+    # Anthropic models don't use tiktoken — fall back to a pure-Python estimate.
+    return max(1, len(text) // 4)
 
 
-def estimate_cost(tokens: int, model: str = "gpt-4o-mini") -> float:
+def estimate_cost(tokens: int, model: str = "claude-haiku-4-5") -> float:
     rates = COST_PER_1K.get(model, _FALLBACK_RATES)
     half = tokens / 2
     return round((half / 1000) * rates["input"] + (half / 1000) * rates["output"], 6)
@@ -35,7 +28,7 @@ class TokenUsage:
     input_tokens: int         = 0
     output_tokens: int        = 0
     total_tokens: int         = 0
-    model: str                = "gpt-4o-mini"
+    model: str                = "claude-haiku-4-5"
     estimated_cost_usd: float = 0.0
     is_exact: bool            = False
 
@@ -46,19 +39,20 @@ def run_agent_tracked(
     model: str,
     config: dict | None = None,
 ) -> tuple[dict, TokenUsage]:
-    """Invoke agent and capture real token usage via LangChain OpenAI callback.
+    """Invoke agent and capture real token usage via LangChain's provider-agnostic
+    usage metadata callback (works with Claude's `AIMessage.usage_metadata`).
 
     `config` is forwarded to the agent (run name / tags / metadata) so traces in
     LangSmith carry the request's correlation ID, user, and model.
     """
-    from langchain_community.callbacks.manager import get_openai_callback
+    from langchain_core.callbacks.usage import get_usage_metadata_callback
 
-    with get_openai_callback() as cb:
+    with get_usage_metadata_callback() as cb:
         result = agent_executor.invoke(payload, config=config)
 
-    input_tok  = cb.prompt_tokens
-    output_tok = cb.completion_tokens
-    total_tok  = cb.total_tokens
+    input_tok  = sum(usage.get("input_tokens", 0) for usage in cb.usage_metadata.values())
+    output_tok = sum(usage.get("output_tokens", 0) for usage in cb.usage_metadata.values())
+    total_tok  = sum(usage.get("total_tokens", 0) for usage in cb.usage_metadata.values())
 
     if total_tok == 0:
         input_text  = str(payload.get("input", ""))

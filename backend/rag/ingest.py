@@ -14,10 +14,8 @@ from pathlib import Path
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_chroma import Chroma
 from langchain_community.document_loaders import TextLoader
-from langchain_openai import OpenAIEmbeddings
+from langchain_huggingface import HuggingFaceEmbeddings
 from loguru import logger
-
-from config import settings
 
 _ROOT = Path(__file__).parent.parent
 DATA_DIR = _ROOT / "knowledgebase"
@@ -92,9 +90,8 @@ def ingest(force: bool = False):
 
 def load_vectorstore():
     """Load the persisted ChromaDB vectorstore (must have run ingest first)."""
-    embeddings = OpenAIEmbeddings(
-        model="text-embedding-3-small",
-        api_key=settings.openai_api_key,
+    embeddings = HuggingFaceEmbeddings(
+        model_name="sentence-transformers/all-MiniLM-L6-v2",
     )
     return Chroma(
         persist_directory=str(CHROMA_DIR),

@@ -15,7 +15,7 @@ NutriBot isn't just a chatbot with a system prompt — it's an agent with real t
 
 🧠 **AI nutrition coach** — a LangGraph ReAct agent that reasons over your question, decides which tool(s) it needs, runs them, and folds the results into a grounded answer. Stays on topic: nutrition, diet, food, health, fitness.
 
-📚 **Knowledge-grounded answers** — retrieves from a curated nutrition knowledge base (ChromaDB + multi-query expansion) as a first-class tool, not a pre-processing afterthought. The vector store re-embeds incrementally — only changed source files get reprocessed.
+📚 **Knowledge-grounded answers** — retrieves from a curated nutrition knowledge base (ChromaDB + multi-query expansion, embedded locally with a HuggingFace sentence-transformer — no embedding API key needed) as a first-class tool, not a pre-processing afterthought. The vector store re-embeds incrementally — only changed source files get reprocessed.
 
 🧮 **Built-in calculators** — BMI, TDEE (activity-adjusted), and full macro splits (protein/carbs/fat in grams *and* calories).
 
@@ -74,7 +74,7 @@ The backend is built to run unattended, not just demo locally:
 
 ## Stack
 
-Python 3.11, FastAPI, LangChain + LangGraph, ChromaDB, OpenAI (generation + embeddings), PostgreSQL, optional Mistral moderation, Docker, `uv` for dependencies.
+Python 3.11, FastAPI, LangChain + LangGraph, ChromaDB, Anthropic Claude (generation) + local HuggingFace sentence-transformer embeddings, PostgreSQL, optional Mistral moderation, Docker, `uv` for dependencies.
 
 ## Running it locally
 
@@ -104,7 +104,7 @@ Copy `backend/.env.example` to `backend/.env`.
 Required:
 
 ```env
-OPENAI_API_KEY=sk-proj-...
+ANTHROPIC_API_KEY=sk-ant-...
 DATABASE_URL=postgresql://user:password@host:5432/nutrition_db
 ```
 
@@ -162,7 +162,7 @@ uv run pytest tests/ -v
 cd backend
 docker build -t nutribot-backend .
 docker run --rm -p 8000:8000 \
-  -e OPENAI_API_KEY=sk-proj-... \
+  -e ANTHROPIC_API_KEY=sk-ant-... \
   -e DATABASE_URL=postgresql://user:password@host:5432/nutrition_db \
   nutribot-backend
 ```
@@ -175,7 +175,7 @@ Set `RUN_RAG_INGEST=1` to rebuild the vector store on container startup.
 - **Backend** → a Hugging Face Docker Space, repo root as the build context
 - **Database** → Supabase Postgres, schema from `backend/sql/schema.sql`
 
-For the backend Space, set secrets `DATABASE_URL`, `OPENAI_API_KEY`, and `MISTRAL_API_KEY` (if you're using moderation), plus optional variables `USDA_API_KEY`, `SESSION_MAX_HOURS`, `RUN_RAG_INGEST`.
+For the backend Space, set secrets `DATABASE_URL`, `ANTHROPIC_API_KEY`, and `MISTRAL_API_KEY` (if you're using moderation), plus optional variables `USDA_API_KEY`, `SESSION_MAX_HOURS`, `RUN_RAG_INGEST`.
 
 For the frontend, point the API base URL in `frontend/index.html` at the backend's domain before deploying.
 

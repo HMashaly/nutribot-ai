@@ -12,14 +12,16 @@ dependencies = [
 
     # LangChain stack
     "langchain==0.3.25",
-    "langchain-openai==0.3.16",
+    "langchain-anthropic>=0.3.0",
+    "langchain-huggingface>=0.1.0",
     "langchain-community==0.3.24",
     "langchain-chroma==0.2.4",
     "langgraph>=0.2.0",
     "chromadb>=1.0.9",
 
-    # OpenAI (no tiktoken — needs Rust, replaced with pure-Python estimate)
-    "openai==1.75.0",
+    # Local embeddings (no API key needed). Capped <4 — newer sentence-transformers
+    # pulls transformers>=4.50, which requires torch>=2.4 (no Intel-Mac wheels).
+    "sentence-transformers>=3.0.0,<4.0.0",
 
     # PostgreSQL
     "psycopg[binary]>=3.3.0",
@@ -67,6 +69,8 @@ required-environments = [
 ]
 
 # Pin onnxruntime to a version that has Mac Intel wheels.
+# Pin numpy <2 — torch 2.2.2 was built against the NumPy 1.x ABI.
 constraint-dependencies = [
     "onnxruntime>=1.18.0,<1.20.0",
+    "numpy<2",
 ]

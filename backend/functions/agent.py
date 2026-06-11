@@ -13,7 +13,7 @@ from types import SimpleNamespace
 from typing import Any
 
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
-from langchain_openai import ChatOpenAI
+from langchain_anthropic import ChatAnthropic
 from langgraph.prebuilt import create_react_agent
 
 from config import settings
@@ -188,6 +188,6 @@ def create_nutribot_agent(model_name: str, user_id: str | None = None):
         search_usda_food,
     ]
 
-    llm = ChatOpenAI(model=model_name, temperature=0, api_key=settings.openai_api_key)
+    llm = ChatAnthropic(model=model_name, temperature=0, api_key=settings.anthropic_api_key)
     graph = create_react_agent(model=llm, tools=tools)
     return NutriBotGraphAgent(graph=graph, user_id=user_id)
